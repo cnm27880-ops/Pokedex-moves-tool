@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>寶可夢 TRPG 綜合查詢系統</title>
+    <style>
+        :root {
+            --primary-red: #DC0A2D;
+            --primary-dark: #2B292C;
+            --bg-color: #F5F5F5;
+            --sidebar-width: 260px;
+            --card-shadow: 0 4px 6px rgba(0,0,0,0.08);
+            --radius: 12px;
+            
+            /* 樹果階級顏色 */
+            --t1-bg: #ffebee; --t1-text: #c62828; --t1-border: #ffcdd2;
+            --t2-bg: #e8f5e9; --t2-text: #2e7d32; --t2-border: #c8e6c9;
+            --t3-bg: #e3f2fd; --t3-text: #1565c0; --t3-border: #bbdefb;
+            --t4-bg: #f3e5f5; --t4-text: #6a1b9a; --t4-border: #e1bee7;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: #333;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- Header --- */
+        header {
+            background-color: var(--primary-red);
+            padding: 10px 20px;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 100;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .blue-lens {
+            width: 36px;
+            height: 36px;
+            background: radial-gradient(circle at 30% 30%, #4facfe, #00f2fe);
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0,242,254, 0.5);
+        }
+
+        h1 { margin: 0; font-size: 1.2rem; letter-spacing: 1px; }
+
+        /* --- Main Layout --- */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--primary-dark);
+            color: #eee;
+            overflow-y: auto;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .menu-group { border-bottom: 1px solid #444; }
+        
+        .menu-title {
+            padding: 15px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .menu-title:hover { background-color: #3e3b3e; }
+        .menu-title i { font-style: normal; font-size: 0.8em; transition: transform 0.3s; }
+        .menu-title.active i { transform: rotate(180deg); }
+
+        .submenu {
+            background-color: #1f1d1f;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .submenu-item {
+            display: block;
+            padding: 12px 20px 12px 40px;
+            color: #aaa;
+            text-decoration: none;
+            cursor: pointer;
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .submenu-item:hover { color: white; background-color: #333; }
+        .submenu-item.current {
+            color: white;
+            background-color: #333;
+            border-left-color: var(--primary-red);
+        }
+
+        /* --- Content Area --- */
+        .content-area {
+            flex: 1;
+            padding: 20px 30px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .view-section { display: none; max-width: 1200px; margin: 0 auto; }
+        .view-section.active { display: block; animation: fadeIn 0.3s; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Common Components --- */
+        .page-title {
+            font-size: 1.8rem;
+            color: var(--primary-dark);
+            margin-bottom: 20px;
+            border-left: 5px solid var(--primary-red);
+            padding-left: 15px;
+        }
+
+        /* --- 1. 招式查詢器 Styles --- */
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: var(--radius);
+            box-shadow: var(--card-shadow);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: flex-end;
+        }
+        .input-group { display: flex; flex-direction: column; gap: 5px; min-width: 150px; flex: 1; }
+        .search-group { flex: 2; min-width: 250px; }
+        .search-box { display: flex; gap: 5px; }
+        label { font-size: 0.9rem; font-weight: bold; color: #666; }
+        input, select {
+            padding: 10px; border: 2px solid #ddd; border-radius: 8px;
+            font-size: 1rem; width: 100%; outline: none; transition: 0.2s;
+        }
+        input:focus, select:focus { border-color: var(--primary-red); }
+        .btn-search {
+            background-color: var(--primary-dark); color: white; border: none;
+            padding: 0 20px; border-radius: 8px; cursor: pointer; height: 42px; font-weight: bold;
+        }
+        .btn-search:hover { background-color: #444; }
+        
+        .moves-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;
+        }
+        .move-card {
+            background: white; border-radius: var(--radius); padding: 20px;
+            box-shadow: var(--card-shadow); border-left: 6px solid #ccc;
+            display: flex; flex-direction: column; gap: 10px; transition: transform 0.2s;
+        }
+        .move-card:hover { transform: translateY(-3px); }
+        .move-header { display: flex; justify-content: space-between; align-items: center; }
+        .move-name { font-size: 1.3rem; font-weight: 800; color: #333; }
+        .move-badge {
+            padding: 4px 12px; border-radius: 20px; color: white; font-size: 0.85rem; font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3); background-color: #777;
+        }
+        .move-stats {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+            background: #f9f9f9; padding: 10px; border-radius: 8px; font-size: 0.9rem; color: #555;
+        }
+        .effect-text { font-size: 0.95rem; line-height: 1.6; color: #444; border-top: 1px solid #eee; padding-top: 10px; }
+        
+        /* === 屬性顏色 (完整版) === */
+        /* 徽章背景色 */
+        .type-一般 { background-color: #D3D3D3; color: #333; }
+        .type-火 { background-color: #930000; }
+        .type-水 { background-color: #2A7FEF; }
+        .type-草 { background-color: #2A7F06; }
+        .type-冰 { background-color: #3DD8FF; color: #333; }
+        .type-妖精 { background-color: #FAC2FF; color: #333; }
+        .type-電 { background-color: #FAC000; color: #333; }
+        .type-地面 { background-color: #915221; }
+        .type-格鬥 { background-color: #FF8138; }
+        .type-毒 { background-color: #9343CB; }
+        .type-飛行 { background-color: #78B4ED; color: #333; }
+        .type-超能者 { background-color: #EF437A; }
+        .type-蟲 { background-color: #8FA419; }
+        .type-岩石 { background-color: #AFA683; color: #333; }
+        .type-幽靈 { background-color: #512F4F; }
+        .type-龍 { background-color: #6670CC; }
+        .type-惡 { background-color: #50413F; }
+        .type-鋼 { background-color: #61A5B8; }
+        .type-變量, .type-變量屬性 { background-color: #777; }
+
+        /* 卡片邊框色 */
+        .card-type-一般 { border-color: #D3D3D3; }
+        .card-type-火 { border-color: #930000; }
+        .card-type-水 { border-color: #2A7FEF; }
+        .card-type-草 { border-color: #2A7F06; }
+        .card-type-冰 { border-color: #3DD8FF; }
+        .card-type-妖精 { border-color: #FAC2FF; }
+        .card-type-電 { border-color: #FAC000; }
+        .card-type-地面 { border-color: #915221; }
+        .card-type-格鬥 { border-color: #FF8138; }
+        .card-type-毒 { border-color: #9343CB; }
+        .card-type-飛行 { border-color: #78B4ED; }
+        .card-type-超能者 { border-color: #EF437A; }
+        .card-type-蟲 { border-color: #8FA419; }
+        .card-type-岩石 { border-color: #AFA683; }
+        .card-type-幽靈 { border-color: #512F4F; }
+        .card-type-龍 { border-color: #6670CC; }
+        .card-type-惡 { border-color: #50413F; }
+        .card-type-鋼 { border-color: #61A5B8; }
+        .card-type-變量, .card-type-變量屬性 { border-color: #777; }
+
+        /* --- 2. 修整日活動 Styles --- */
+        .rules-container { display: grid; gap: 20px; }
+        .rule-card {
+            background: white; border-radius: var(--radius); padding: 25px;
+            box-shadow: var(--card-shadow); border: 1px solid #eee;
+        }
+        .rule-title { 
+            font-size: 1.4rem; 
+            font-weight: bold;
+            color: var(--primary-red); 
+            margin-bottom: 15px; 
+            border-bottom: 2px solid #eee; 
+            padding-bottom: 10px; 
+        }
+        .rule-content ul { padding-left: 20px; line-height: 1.8; color: #444; }
+        .rule-content li { margin-bottom: 8px; }
+        .rule-highlight { background-color: #fff3e0; padding: 2px 6px; border-radius: 4px; color: #e65100; font-weight: bold; }
+
+        /* --- 3. 樹果圖鑑 Styles --- */
+        .berry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .berry-card {
+            background: #F6F2F0; 
+            border-radius: var(--radius); 
+            padding: 20px;
+            box-shadow: var(--card-shadow); 
+            border: 1px solid #e0dbd8;
+            position: relative; 
+            overflow: hidden;
+        }
+        .berry-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .berry-name { font-size: 1.3rem; font-weight: bold; }
+        .berry-tier {
+            padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold;
+            border: 1px solid;
+        }
+        .tier-T1 { background-color: var(--t1-bg); color: var(--t1-text); border-color: var(--t1-border); }
+        .tier-T2 { background-color: var(--t2-bg); color: var(--t2-text); border-color: var(--t2-border); }
+        .tier-T3 { background-color: var(--t3-bg); color: var(--t3-text); border-color: var(--t3-border); }
+        .tier-T4 { background-color: var(--t4-bg); color: var(--t4-text); border-color: var(--t4-border); }
+
+        .berry-info { font-size: 0.95rem; line-height: 1.5; color: #555; }
+        .berry-row { margin-bottom: 8px; display: flex; }
+        .berry-label { font-weight: bold; color: #888; width: 50px; flex-shrink: 0; }
+
+        /* --- 4. 收服計算器 Styles --- */
+        .calc-container {
+            background: white; padding: 30px; border-radius: var(--radius);
+            box-shadow: var(--card-shadow); max-width: 900px; margin: 0 auto;
+        }
+        .calc-section { margin-bottom: 25px; padding: 20px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; }
+        .calc-section-title { font-size: 1.1rem; font-weight: bold; color: var(--primary-dark); margin-bottom: 15px; }
+        .calc-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+        .calc-check-label {
+            display: flex; align-items: center; padding: 10px; background: white;
+            border: 1px solid #ddd; border-radius: 6px; cursor: pointer; transition: 0.2s;
+        }
+        .calc-check-label:hover { border-color: var(--primary-red); }
+        .calc-check-label input { width: auto; margin-right: 10px; }
+        .cost-badge { margin-left: auto; background: #eee; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; color: #666; }
+
+        .calc-custom-section { margin-top: 15px; padding: 15px; background: #fff; border-radius: 6px; border: 1px dashed #ccc; }
+        .custom-attr-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        .custom-attr-item { 
+            display: flex; align-items: center; gap: 5px;
+            padding: 6px 12px; background: #f0f0f0; border-radius: 4px; font-size: 0.9rem;
+        }
+        .custom-attr-item input { width: auto; }
+
+        .ball-section { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+        .ball-input-group { 
+            display: flex; flex-direction: column; gap: 5px;
+            padding: 15px; background: white; border-radius: 8px; border: 1px solid #ddd;
+        }
+        .ball-input-group label { font-weight: bold; color: #333; font-size: 0.95rem; }
+        .ball-input-group input { text-align: center; }
+        .ball-desc { font-size: 0.75rem; color: #888; margin-top: 5px; }
+        
+        .result-box {
+            background-color: var(--primary-dark); color: white; padding: 25px;
+            border-radius: var(--radius); margin-top: 30px;
+        }
+        .result-section { margin-bottom: 15px; }
+        .result-section-title { font-size: 0.9rem; color: #aaa; margin-bottom: 8px; }
+        .result-detail { font-size: 0.95rem; line-height: 1.8; }
+        .result-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .result-total { font-size: 1.5rem; font-weight: bold; color: #4facfe; border-top: 1px solid #555; padding-top: 15px; margin-top: 15px; }
+        .result-summary { margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px; }
+        .result-summary-title { font-weight: bold; margin-bottom: 10px; color: #69f0ae; }
+
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column; overflow-y: auto; }
+            .sidebar { width: 100%; height: auto; max-height: 200px; }
+            .content-area { overflow: visible; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="blue-lens"></div>
+    <h1>寶可夢 TRPG 綜合查詢系統</h1>
+</header>
+
+<div class="main-container">
+    <!-- 左側導航欄 -->
+    <nav class="sidebar">
+        <!-- 1. 招式查詢器 -->
+        <div class="menu-group">
+            <div class="menu-title" onclick="switchView('view-moves')">
+                招式查詢器
+            </div>
+        </div>
+
+        <!-- 2. 修整日活動 -->
+        <div class="menu-group">
+            <div class="menu-title" onclick="toggleMenu(this)">
+                修整日活動 <i>▼</i>
+            </div>
+            <div class="submenu">
+                <a class="submenu-item" onclick="switchView('view-downtime')">各式活動規則</a>
+            </div>
+        </div>
+
+        <!-- 3. 物品和各類查詢 -->
+        <div class="menu-group">
+            <div class="menu-title" onclick="toggleMenu(this)">
+                物品和各類查詢 <i>▼</i>
+            </div>
+            <div class="submenu">
+                <a class="submenu-item" onclick="switchView('view-berries')">全部樹果 (圖鑑)</a>
+                <a class="submenu-item" onclick="switchView('view-calculator')">收服計算器</a>
+                <a class="submenu-item" onclick="switchView('view-keywords')">全體招式關鍵字</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 右側內容區 -->
+    <main class="content-area">
+        
+        <!-- 視圖 1: 招式查詢器 -->
+        <div id="view-moves" class="view-section active">
+            <div class="page-title">招式查詢器</div>
+            <div class="controls">
+                <div class="input-group search-group">
+                    <label>招式名稱</label>
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="輸入名稱 (例如: 水流)...">
+                        <button class="btn-search" id="searchBtn">搜尋</button>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>屬性</label>
+                    <select id="typeFilter"><option value="all">全部屬性</option></select>
+                </div>
+                <div class="input-group">
+                    <label>分類</label>
+                    <select id="catFilter">
+                        <option value="all">全部分類</option>
+                        <option value="攻擊">物理 (攻擊)</option>
+                        <option value="特攻">特殊 (特攻)</option>
+                        <option value="效果">變化 (效果)</option>
+                        <option value="變化">變化 (變化)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>傷害骰</label>
+                    <select id="diceFilter">
+                        <option value="all">全部</option>
+                        <option value="d4">D4</option>
+                        <option value="d6">D6</option>
+                        <option value="d8">D8</option>
+                        <option value="d10">D10</option>
+                        <option value="d12">D12</option>
+                        <option value="d20">D20</option>
+                    </select>
+                </div>
+            </div>
+            <div id="resultsCount" style="margin-bottom:10px; color:#666;"></div>
+            <div id="movesResults" class="moves-grid"></div>
+        </div>
+
+        <!-- 視圖 2: 修整日活動 -->
+        <div id="view-downtime" class="view-section">
+            <div class="page-title">修整日活動規則</div>
+            <div class="rules-container" id="downtimeContainer"></div>
+        </div>
+
+        <!-- 視圖 3: 樹果圖鑑 -->
+        <div id="view-berries" class="view-section">
+            <div class="page-title">全體樹果圖鑑</div>
+            <div class="berry-grid" id="berryContainer"></div>
+        </div>
+
+        <!-- 視圖 4: 收服計算器 -->
+        <div id="view-calculator" class="view-section">
+            <div class="page-title">收服計算器</div>
+            <div class="calc-container">
+                
+                <!-- 捕捉範圍 -->
+                <div class="calc-section">
+                    <div class="calc-section-title">📍 捕捉範圍</div>
+                    <div class="calc-options">
+                        <label class="calc-check-label">
+                            <input type="radio" name="scope" id="scope_full" value="fullPokedex" onchange="calcCatch()">
+                            <span>全圖鑑抽取 (1025隻)</span>
+                            <span class="cost-badge">+3 DD</span>
+                        </label>
+                        <label class="calc-check-label">
+                            <input type="radio" name="scope" id="scope_type" value="typeArea" onchange="calcCatch()">
+                            <span>指定屬性區域</span>
+                            <span class="cost-badge">+4 DD</span>
+                        </label>
+                    </div>
+                    
+                    <!-- 指定世代 (只有選擇屬性區域時才顯示) -->
+                    <div id="genOption" style="margin-top: 15px; display: none;">
+                        <label class="calc-check-label" style="max-width: 300px;">
+                            <input type="checkbox" id="scope_gen" onchange="calcCatch()">
+                            <span>+ 指定世代</span>
+                            <span class="cost-badge">+2 DD</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 客製化屬性 -->
+                <div class="calc-section">
+                    <div class="calc-section-title">✨ 客製化屬性 (每項 +1 DD)</div>
+                    <div class="calc-options">
+                        <label class="calc-check-label">
+                            <input type="checkbox" id="custom_gender" onchange="calcCatch()">
+                            <span>指定性別</span>
+                            <span class="cost-badge">+1 DD</span>
+                        </label>
+                        <label class="calc-check-label">
+                            <input type="checkbox" id="custom_shiny" onchange="calcCatch()">
+                            <span>異色</span>
+                            <span class="cost-badge">+1 DD</span>
+                        </label>
+                        <label class="calc-check-label">
+                            <input type="checkbox" id="custom_nature" onchange="calcCatch()">
+                            <span>指定個性</span>
+                            <span class="cost-badge">+1 DD</span>
+                        </label>
+                    </div>
+                    
+                    <!-- 個性選擇 -->
+                    <div id="natureSelector" style="margin-top: 15px; display: none;">
+                        <label style="display: block; margin-bottom: 8px;">選擇個性：</label>
+                        <select id="natureSelect" style="max-width: 300px;">
+                            <option value="">-- 請選擇 --</option>
+                            <option value="頑皮">頑皮 (攻擊↑ 特防↓)</option>
+                            <option value="孤獨">孤獨 (攻擊↑ 防禦↓)</option>
+                            <option value="固執">固執 (攻擊↑ 特攻↓)</option>
+                            <option value="勇敢">勇敢 (攻擊↑ 速度↓)</option>
+                            <option value="大膽">大膽 (防禦↑ 攻擊↓)</option>
+                            <option value="懶散">懶散 (防禦↑ 速度↓)</option>
+                            <option value="悠閒">悠閒 (防禦↑ 特攻↓)</option>
+                            <option value="文雅">文雅 (防禦↑ 特防↓)</option>
+                            <option value="溫和">溫和 (特防↑ 防禦↓)</option>
+                            <option value="激烈">激烈 (特攻↑ 攻擊↓)</option>
+                            <option value="安靜">安靜 (特攻↑ 速度↓)</option>
+                            <option value="鎮定">鎮定 (特防↑ 攻擊↓)</option>
+                            <option value="謹慎">謹慎 (特防↑ 特攻↓)</option>
+                            <option value="膽小">膽小 (速度↑ 攻擊↓)</option>
+                            <option value="急躁">急躁 (速度↑ 防禦↓)</option>
+                            <option value="歡快">歡快 (速度↑ 特攻↓)</option>
+                            <option value="天真">天真 (速度↑ 特防↓)</option>
+                            <option value="溫順">溫順 (特攻↑ 防禦↓)</option>
+                            <option value="快活">快活 (特攻↑ 特防↓)</option>
+                            <option value="怪僻">怪僻 (特防↑ 速度↓)</option>
+                            <option value="認真">認真 (無加減值)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 解除捕獲限制 -->
+                <div class="calc-section">
+                    <div class="calc-section-title">🔓 解除捕獲限制</div>
+                    <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">
+                        ⚠️ 全圖鑑/指定屬性/指定世代 預設無法捕獲以下類型，需額外解鎖
+                    </p>
+                    <div class="calc-options">
+                        <label class="calc-check-label">
+                            <input type="checkbox" id="unlock_pseudo" onchange="calcCatch()">
+                            <span>大器晚成</span>
+                            <span class="cost-badge">+2 DD</span>
+                        </label>
+                        <label class="calc-check-label">
+                            <input type="checkbox" id="unlock_mythical" onchange="calcCatch()">
+                            <span>幻之寶可夢</span>
+                            <span class="cost-badge">+3 DD</span>
+                        </label>
+                        <label class="calc-check-label">
+                            <input type="checkbox" id="unlock_ub" onchange="calcCatch()">
+                            <span>究極異獸</span>
+                            <span class="cost-badge">+3 DD</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 使用精靈球 -->
+                <div class="calc-section">
+                    <div class="calc-section-title">🎒 使用精靈球 (可疊加使用)</div>
+                    <div class="ball-section">
+                        <div class="ball-input-group">
+                            <label>🔴 寶貝球</label>
+                            <input type="number" id="ball_poke" value="0" min="0" oninput="calcCatch()">
+                            <div class="ball-desc">全圖鑑/屬性區/世代 各-1</div>
+                        </div>
+                        <div class="ball-input-group">
+                            <label>🔵 超級球</label>
+                            <input type="number" id="ball_great" value="0" min="0" oninput="calcCatch()">
+                            <div class="ball-desc">全圖鑑-2, 大器晚成-1</div>
+                        </div>
+                        <div class="ball-input-group">
+                            <label>⚫ 高級球</label>
+                            <input type="number" id="ball_ultra" value="0" min="0" oninput="calcCatch()">
+                            <div class="ball-desc">全圖鑑-3, 大器晚成-2, 幻/UB-1</div>
+                        </div>
+                        <div class="ball-input-group">
+                            <label>🟣 大師球</label>
+                            <input type="number" id="ball_master" value="0" min="0" oninput="calcCatch()">
+                            <div class="ball-desc">幻之-2, 究極異獸-3</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 結果顯示 -->
+                <div class="result-box">
+                    <div class="result-section">
+                        <div class="result-section-title">📋 條件明細</div>
+                        <div class="result-detail" id="txt_conditions">-</div>
+                    </div>
+                    <div class="result-section">
+                        <div class="result-section-title">🎱 精靈球折扣</div>
+                        <div class="result-detail" id="txt_discounts">-</div>
+                    </div>
+                    <div class="result-row result-total">
+                        <span>最終成本：</span>
+                        <span id="txt_final">0 DD</span>
+                    </div>
+                    <div class="result-summary" id="result_summary" style="display: none;">
+                        <div class="result-summary-title">📝 捕捉摘要</div>
+                        <div id="txt_summary">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 視圖 5: 全體招式關鍵字 -->
+        <div id="view-keywords" class="view-section">
+            <div class="page-title">全體招式關鍵字</div>
+            <div style="text-align: center; color: #888; padding: 50px;">
+                資料建置中...
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+/* =========================================
+   1. 資料區 (Data)
+   ========================================= */
+
+// --- 樹果資料 ---
+const berryData = [
+    { tier: "T1", name: "櫻子果", color: "鮮紅色", flavor: "強烈辣味", texture: "咬下去清脆多汁，外皮很薄。", scent: "帶有胡椒般的辛辣刺鼻味。" },
+    { tier: "T1", name: "零餘果", color: "藍紫色", flavor: "極致乾澀", texture: "外殼堅硬，果肉乾燥粉粉的。", scent: "淡淡的木頭香氣。" },
+    { tier: "T1", name: "桃桃果", color: "粉紅色", flavor: "濃郁甜蜜", texture: "果肉軟嫩綿密，入口即化。", scent: "濃厚的花蜜甜香。" },
+    { tier: "T1", name: "莓莓果", color: "青綠色", flavor: "深層苦味", texture: "纖維很多，咬起來很有嚼勁。", scent: "青草味，帶有潮濕泥土氣息。" },
+    { tier: "T1", name: "藍橘果", color: "深藍色", flavor: "均衡微甜", texture: "果肉飽滿多汁，咬開會噴汁。", scent: "清新的柑橘香氣。" },
+    { tier: "T2", name: "文柚果", color: "黃色 (帶橘斑)", flavor: "酸甜混合", texture: "果肉厚實，有顆粒感。", scent: "強烈的檸檬與柚子混合香氣。" },
+    { tier: "T2", name: "柿仔果", color: "粉橘色", flavor: "澀中帶甜", texture: "外滑內黏，有特殊的膠質感。", scent: "成熟果實發酵的酒香氣。" },
+    { tier: "T2", name: "木子果", color: "翠綠色", flavor: "先苦後甘", texture: "質地紮實，像青蘋果脆硬。", scent: "薄荷與藥草的清涼味。" },
+    { tier: "T2", name: "蘋野果", color: "紅黃漸層", flavor: "酸辣交織", texture: "果皮稍厚，果肉爽脆。", scent: "煮過的香料蘋果茶味。" },
+    { tier: "T2", name: "利木果", color: "鮮黃色", flavor: "極度酸味", texture: "堅硬密實，水分少但酸度高。", scent: "尖銳的酸味。" },
+    { tier: "T3", name: "枝荔果", color: "暗紅色", flavor: "甜辣濃縮", texture: "果肉像果凍Q彈，含細籽。", scent: "燃燒木頭混合焦糖香。" },
+    { tier: "T3", name: "龍睛果", color: "冰藍色", flavor: "極度乾澀", texture: "像冰塊一樣硬，會慢慢融化。", scent: "冷冽的礦石氣味。" },
+    { tier: "T3", name: "沙鱗果", color: "綠色 (帶紅毛)", flavor: "極酸帶甜", texture: "表面有細毛，內為黏稠漿液。", scent: "醋酸味混合奇異果香。" },
+    { tier: "T3", name: "龍火果", color: "艷粉色", flavor: "極辣極苦", texture: "外皮有刺，果肉有沙沙感。", scent: "化學藥劑或辣椒水的刺激味。" },
+    { tier: "T3", name: "杏仔果", color: "靛青色", flavor: "酸澀混合", texture: "果殼非常硬，內肉像杏仁。", scent: "沉穩的堅果油脂香氣。" },
+    { tier: "T4", name: "蘭薩果", color: "深紅色 (似火焰)", flavor: "爆發性辛辣", texture: "握在手裡會發熱，有氣泡感。", scent: "火柴與硫磺香料味。" },
+    { tier: "T4", name: "星桃果", color: "綠金相間", flavor: "五味雜陳", texture: "夢幻口感，每嚼一口味道都在變。", scent: "回憶中的味道。" },
+    { tier: "T4", name: "謎芝果", color: "黑紫色 (帶星點)", flavor: "虛無/無味", texture: "像咬到空氣或雲朵。", scent: "夜晚涼風與神秘薰衣草香。" },
+    { tier: "T4", name: "奇秘果", color: "翠綠色 (細長型)", flavor: "尖銳乾澀", texture: "像嚼金屬或玻璃一樣脆。", scent: "強烈鐵鏽味與乾燥泥土味。" },
+    { tier: "T4", name: "釋陀果", color: "鮮紅色 (像燈籠)", flavor: "極甜至苦", texture: "外層糖衣脆，內層流動苦液。", scent: "濃縮咖啡與蜂蜜醇厚香氣。" }
+];
+
+const movesData = [
+  // 招式資料(1-400)
+  { "name": "（元素攻擊）", "range": "變化", "type": "(變量)", "category": "變化", "frequency": "變化", "damage": "--", "effect": "機械洛托姆在使用有線特徵時，將具有與其所寄居的機器相關的攻擊。 當寄居冰箱或冰櫃時，可能會有冰屬性攻擊，或者當寄居烤箱或微波爐時，可能會有火屬性攻擊。" },
+  { "name": "絕對令人驚嘆", "range": "遠程（20英尺爆發）", "type": "一般", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "命中時，所有敵方寶可夢目標都會定身。 只要在接下來的三輪戰鬥中不移動或進行其他攻擊，目標仍然定身。 如果你被移動，絕美效果結束。" },
+  { "name": "吸取", "range": "近戰", "type": "草", "category": "特攻", "frequency": "每天3次", "damage": "2d8", "effect": "命中時，你回復等同於造成傷害一半的HP。" },
+  { "name": "衝岩", "range": "近戰", "type": "岩石", "category": "攻擊", "frequency": "隨時", "damage": "2d6", "effect": "衝岩具有先制優先級。" },
+  { "name": "毒Ｚ強酸劇毒滅絕雨", "range": "遠程（60尺，20尺爆炸）", "type": "毒", "category": "(變量)", "frequency": "每天1次", "damage": "8d12", "effect": "--" },
+  { "name": "酸液炸彈", "range": "遠程（20尺）", "type": "毒", "category": "特攻", "frequency": "每天3次", "damage": "1d20", "effect": "命中時，目標的特防減少1，持續10分鐘。 此效果不可疊加。" },
+  { "name": "雜技", "range": "近戰", "type": "飛行", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "如果你持有物品，無法使用雜技。" },
+  { "name": "點穴", "range": "近戰", "type": "一般", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "選擇一個友方或自己作為目標。 目標的攻擊、特攻、防禦、特防或速度提升2，持續五分鐘。 此效果不可疊加。" },
+  { "name": "燕返", "range": "近戰", "type": "飛行", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "防禦低於15的目標不會被錯過。" },
+  { "name": "空中鞭打", "range": "遠程(30英尺)", "type": "飛行", "category": "特攻", "frequency": "每天3次", "damage": "3d8", "effect": "對於特防低於10的目標，你不會錯過目標。" },
+  { "name": "氣旋攻擊", "range": "遠程(100英尺光束)", "type": "飛行", "category": "特攻", "frequency": "每天3次", "damage": "5d20", "effect": "命中時，如果你在命中檢定中得到15或更高，氣旋攻擊將是暴擊。" },
+  { "name": "您先請", "range": "遠程（20尺）", "type": "一般", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "在接下來的對戰中，你的回合將在目標的回合之後。" },
+  { "name": "空氣利刃", "range": "遠程(15英尺)", "type": "飛行", "category": "特攻", "frequency": "隨時", "damage": "2d8", "effect": "空氣利刃在命中檢定中減1。命中時，如果你在命中檢定中得到18或更高，空氣利刃將是暴擊。" },
+  { "name": "空氣飛鏢", "range": "遠程(10英尺)", "type": "飛行", "category": "攻擊", "frequency": "隨時", "damage": "2d6", "effect": "--" },
+  { "name": "空氣之刃", "range": "遠程(15英尺)", "type": "飛行", "category": "特攻", "frequency": "每天1次", "damage": "3d12", "effect": "空氣之刃在命中檢定中減1。命中時，如果你在命中檢定中得到14或更高，目標將被定身。" },
+  { "name": "格鬥Ｚ全力無雙激烈拳", "range": "近戰(25英尺爆炸)", "type": "格鬥", "category": "(變量)", "frequency": "每天1次", "damage": "8d12", "effect": "立即移動到目標旁邊，然後進行命中檢定。" },
+  { "name": "交換場地", "range": "自身", "type": "超能者", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "交換場地作為一次反應使用。當你將被攻擊時，使用交換場地來與60英尺內的一名願意的盟友交換位置。 那名盟友會受到攻擊，而不是你。" },
+  { "name": "阿爾法光束", "range": "遠程(25英尺光束)", "type": "一般", "category": "特攻", "frequency": "每天1次", "damage": "5d20", "effect": "阿爾法光束有一個充能回合，在命中檢定時-2。" },
+  { "name": "阿爾法衝擊", "range": "近戰(10英尺爆發)", "type": "一般", "category": "攻擊", "frequency": "每天1次", "damage": "5d20", "effect": "阿爾法衝擊有一個充能回合，在命中檢定時-2。" },
+  { "name": "阿爾法恢復", "range": "自身", "type": "一般", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "你恢復1d12點HP。你的阿爾法光束和阿爾法衝擊的使用次數會像你休息一樣恢復。" },
+  { "name": "擲錨", "range": "近戰", "type": "鋼", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "命中時，目標被綁定在你身邊或原地1d6回合。" },
+  { "name": "原始之力", "range": "遠程(10英尺)", "type": "岩石", "category": "特攻", "frequency": "每天1次", "damage": "2d8", "effect": "命中時，你的攻擊、特攻、防禦、特防和速度各提升+1，持續1小時。" },
+  { "name": "蘋果酸", "range": "遠程(15英尺)", "type": "草", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "命中時，目標的特防減少1，持續10分鐘。 此效果不可疊加。" },
+  { "name": "水波刀", "range": "近戰", "type": "水", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "命中時，如果你在命中檢定中得到18或更高，水波刀會造成暴擊。" },
+  { "name": "水流噴射", "range": "近戰", "type": "水", "category": "攻擊", "frequency": "隨時", "damage": "2d6", "effect": "水流噴射具有優先級。" },
+  { "name": "水流環", "range": "自身", "type": "水", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "給自己穿上一個環形外套。 外套具有以下能力：在你的回合開始時，恢復1d10點HP。這件外套持續1分鐘。如果下雨，外套持續2分鐘。" },
+  { "name": "流水旋舞", "range": "近戰", "type": "水", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "命中時，你的速度+1，持續10分鐘。" },
+  { "name": "水流尾", "range": "近戰", "type": "水", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "--" },
+  { "name": "鎧農炮", "range": "遠程(40英尺)", "type": "火", "category": "特攻", "frequency": "每天1次", "damage": "5d12", "effect": "命中時，你的防禦和特防減少2，持續10分鐘。" },
+  { "name": "猛推", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "隨時", "damage": "1d4", "effect": "猛推在命中檢定時減少2。猛推是一次散射攻擊。最多5次攻擊。" },
+  { "name": "芳香治療", "range": "近戰", "type": "草", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "選擇一個友方或自己作為目標。 目標解除所有痛苦。" },
+  { "name": "箭切", "range": "遠程(25英尺)", "type": "一般", "category": "攻擊", "frequency": "隨時", "damage": "2d6", "effect": "--" },
+  { "name": "惡意追擊", "range": "近戰", "type": "惡", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "如果目標在本回合已經受到攻擊，惡意追擊造成額外1d8傷害。" },
+  { "name": "驚嚇", "range": "近戰", "type": "幽靈", "category": "攻擊", "frequency": "隨時", "damage": "1d10", "effect": "命中時，如果你在命中檢定中得到18或更高，目標將被定身。" },
+  { "name": "星碎", "range": "遠程(50英尺爆炸)", "type": "幽靈", "category": "特攻", "frequency": "每天3次", "damage": "5d20", "effect": "--" },
+  { "name": "攻擊指令", "range": "遠程(10英尺)", "type": "蟲", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "命中時，如果你在命中檢定中得到17或更高，攻擊指令將造成暴擊。" },
+  { "name": "迷人", "range": "遠程(10英尺)", "type": "一般", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "命中時，目標會著迷於你。" },
+  { "name": "波導彈", "range": "遠程(30英尺)", "type": "格鬥", "category": "特攻", "frequency": "每天1次", "damage": "3d12", "effect": "無法錯過特防低於20的目標。" },
+  { "name": "氣場輪", "range": "近戰", "type": "電", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "命中時，你的攻擊增加1，持續10分鐘。 此效果無法疊加。 如果你處於飢餓狀態，氣場輪將是惡屬性。" },
+  { "name": "極光束", "range": "遠程(15英尺光束)", "type": "冰", "category": "特攻", "frequency": "每天3次", "damage": "3d8", "effect": "被命中時，所有目標的攻擊減少1，持續10分鐘。 此效果不能疊加。" },
+  { "name": "極光幕", "range": "近戰", "type": "冰", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "在目標或自己身上放上一層護幕。 護幕具有以下能力：如果在冰雹中，成功攻擊只造成一半傷害。 此護幕持續2分鐘。" },
+  { "name": "雪崩", "range": "近戰", "type": "冰", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "如果本回合被目標攻擊，傷害為3d12。" },
+  { "name": "下壓踢", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "命中時，如果在命中檢定中得到18或更高，目標混亂。如果未命中，失去等於最大生命值一半的生命值。" },
+  { "name": "碉堡", "range": "自身", "type": "毒", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "碉堡作為一次反應使用。如果受到近戰攻擊，使用碉堡來忽略傷害和攻擊效果，並毒害攻擊者。" },
+  { "name": "投球", "range": "遠程(10英尺)", "type": "一般", "category": "攻擊", "frequency": "隨時", "damage": "1d4", "effect": "投球在命中檢定中減少2。投球是一次散射攻擊。最多5次攻擊。" },
+  { "name": "猛擊", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "猛擊在命中檢定中減少2。你的能量護盾破碎，1分鐘內無法使用。" },
+  { "name": "鳥嘴加農炮", "range": "近戰", "type": "飛行", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "鳥嘴加農炮是一個兩回合的招式。 在第一回合：任何與你使用近戰招式命中的角色直到你的下一個回合都會被灼傷。在第二回合，移動兩倍於你的移動速度，然後你可以進行鳥嘴加農炮的命中檢定和傷害投擲。" },
+  { "name": "巨獸彈", "range": "遠程（20尺）", "type": "鋼", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "如果目標是極巨化、超極巨化或無極化，巨獸彈造成額外+250傷害。" },
+  { "name": "巨獸斬", "range": " 遠程(20英尺)", "type": "鋼", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": " 如果目標是極巨化、超極巨化或無極化，巨獸斬造成額外+250傷害。" },
+  { "name": "打嗝", "range": "遠程(15英尺)", "type": "毒", "category": "特攻", "frequency": "每天1次", "damage": "5d12", "effect": "打嗝必須在過去一分鐘內進食後才能使用。" },
+  { "name": "腹鼓", "range": "自身", "type": "一般", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "你失去等於你最大生命值一半的生命值，然後你的攻擊力增加6點，持續10分鐘。 這個效果不能疊加。" },
+  { "name": "忍耐", "range": "遠程(25英尺爆炸)", "type": "一般", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "忍耐是一個三回合的招式。 在第一和第二回合，什麼都不做。在第三回合，釋放能量；範圍內的所有角色受到傷害，傷害值等於自第一回合忍耐以來受到的傷害的兩倍。" },
+  { "name": "綁緊", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "隨時", "damage": "1d4", "effect": "擊中時，目標被束縛在你身邊1d4回合。 每回合目標被束縛，它在自己的回合受到1d4點物理傷害。" },
+  { "name": "咬住", "range": "近戰", "type": "惡", "category": "攻擊", "frequency": "隨時", "damage": "2d8", "effect": "命中時，如果你在命中檢定中得到18或更高，目標將被定身。" },
+  { "name": "悔念劍", "range": "近戰", "type": "火", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "命中時，你回復等同於造成傷害一半的HP。" },
+  { "name": "冤冤相報", "range": "近戰", "type": "幽靈", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "擊中時，如果你在命中檢定中得到18或更高，目標將被凍結。" },
+  { "name": "惡Ｚ黑洞吞噬萬物滅", "range": "遠程（60尺，20尺爆炸）", "type": "惡", "category": "(變量)", "frequency": "每天1次", "damage": "8d12", "effect": "--" },
+  { "name": "爆炸烈焰", "range": "遠程（30尺，10尺爆炸）", "type": "火", "category": "特攻", "frequency": "每天1次", "damage": "5d20", "effect": "爆炸烈焰有一個充能回合，並且在命中檢定期間減少2點。" },
+  { "name": "火焰踢", "range": "近戰", "type": "火", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "擊中時，如果你在命中檢定中得到16或更高，目標將被灼傷。" },
+  { "name": "暴風雪", "range": "遠程（20尺，10尺波動）", "type": "冰", "category": "特攻", "frequency": "每天1次", "damage": "5d12", "effect": "暴風雪在命中檢定期間減少2點，除非正在下冰雹。擊中時，如果你在命中檢定中得到18或更高，目標將被凍結。" },
+  { "name": "擋路", "range": "近戰", "type": "一般", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "擊中時，目標被束縛在你身邊1d6回合。" },
+  { "name": "草Ｚ絢爛繽紛花怒放", "range": "遠程（60尺，20尺爆炸）", "type": "草", "category": "(變量)", "frequency": "每天1次", "damage": "8d12", "effect": "--" },
+  { "name": "青焰", "range": "遠程（50尺）", "type": "火", "category": "特攻", "frequency": "每天3次", "damage": "5d12", "effect": "擊中時，如果你在命中檢定中得到14或更高，目標將被灼傷。" },
+  { "name": "撲擊", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "撲擊對每點你比目標高的防禦值額外造成+2點傷害。" },
+  { "name": "泰山壓頂", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "如果你在命中時得到14或更高的命中檢定，目標將會麻痺。" },
+  { "name": "電喙", "range": "近戰", "type": "電", "category": "攻擊", "frequency": "每天1次", "damage": "3d8", "effect": "如果目標在這一輪還沒有行動過，電喙會額外造成+2d8的傷害。" },
+  { "name": "雷擊", "range": "近戰", "type": "電", "category": "攻擊", "frequency": "每天3次", "damage": "5d12", "effect": "如果你在命中時得到14或更高的命中檢定，目標將會麻痺。" },
+  { "name": "骨棒", "range": "近戰", "type": "地面", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "命中時，如果你在命中檢定中得到18或更高，目標將被定身。" },
+  { "name": "骨棒亂打", "range": "近戰", "type": "地面", "category": "攻擊", "frequency": "隨時", "damage": "1d4", "effect": "骨棒亂打在命中檢定時有-2的懲罰。骨棒亂打是一個散射攻擊。最多可進行5次攻擊。" },
+  { "name": "骨頭迴力鏢", "range": "遠程(15英尺)", "type": "地面", "category": "攻擊", "frequency": "每天3次", "damage": "2d8", "effect": "骨頭迴力鏢是一個散射攻擊。它有兩次攻擊機會。" },
+  { "name": "爆音波", "range": "遠程(25英尺爆炸)", "type": "一般", "category": "特攻", "frequency": "每天1次", "damage": "3d12", "effect": "在爆音波的範圍內的任何人都會被治癒睡眠狀態。" },
+  { "name": "彈跳", "range": "近戰", "type": "飛行", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "彈跳是一個兩回合的招式。 第一回合，將自己提升40英尺高。第二回合，返回地面，移動最多兩倍的移動速度，然後你可以進行彈跳的命中檢定和傷害。 如果你在命中時得到14或更高的命中檢定，目標將會麻痺。" },
+  { "name": "木枝突刺", "range": "近戰", "type": "草", "category": "攻擊", "frequency": "隨時", "damage": "2d6", "effect": "--" },
+  { "name": "勇鳥猛攻", "range": "近戰", "type": "飛行", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "命中時，你會失去相當於造成傷害的1/3的HP。" },
+  { "name": "廣域破壞", "range": "近戰", "type": "龍", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "命中時，目標的攻擊會減少1，持續10分鐘。 這個效果不能疊加。" },
+  { "name": "一般Ｚ究極無敵大衝撞", "range": "近戰(25英尺爆炸)", "type": "一般", "category": "(變量)", "frequency": "每天1次", "damage": "8d12", "effect": "立即移動到目標旁邊，然後進行命中檢定。" },
+  { "name": "劈瓦", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "摧毀5英尺內的任何牆壁。您可以用劈瓦攻擊牆壁，無需進行命中檢定或造成傷害。" },
+  { "name": "鹽水", "range": "遠程（20尺）", "type": "水", "category": "特攻", "frequency": "每天3次", "damage": "3d8", "effect": "如果您的最大生命值少於一半，鹽水的傷害為5d8。" },
+  { "name": "殘酷打擊", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "隨時", "damage": "2d6", "effect": "--" },
+  { "name": "狂舞揮打", "range": "近戰（5英尺爆發）", "type": "惡", "category": "攻擊", "frequency": "隨時", "damage": "2d8", "effect": "--" },
+  { "name": "泡沫", "range": "遠程(15英尺)", "type": "水", "category": "特攻", "frequency": "隨時", "damage": "1d12", "effect": "命中時，目標的速度減少1，持續10分鐘。 此效果不能疊加。" },
+  { "name": "泡沫光線", "range": "遠程（20英尺光束）", "type": "水", "category": "特攻", "frequency": "每天3次", "damage": "3d8", "effect": "命中時，目標的速度減少1，持續10分鐘。 此效果不能疊加。" },
+  { "name": "蟲咬", "range": "近戰", "type": "蟲", "category": "攻擊", "frequency": "隨時", "damage": "2d8", "effect": "命中時，如果目標持有果實，您將其偷走並立即消耗。" },
+  { "name": "蟲鳴", "range": "遠程（20尺）", "type": "蟲", "category": "特攻", "frequency": "每天1次", "damage": "3d12", "effect": "命中時，目標的特防減少1，持續10分鐘。 此效果不能疊加。" },
+  { "name": "重踏", "range": "遠程（20英尺爆發）", "type": "地面", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "命中時，所有目標的速度減少1，持續10分鐘。 此效果不能疊加。" },
+  { "name": "子彈拳", "range": "近戰", "type": "鋼", "category": "攻擊", "frequency": "隨時", "damage": "2d6", "effect": "子彈拳具有優先級。" },
+  { "name": "種子機關槍", "range": "遠程(10英尺)", "type": "草", "category": "攻擊", "frequency": "隨時", "damage": "1d4", "effect": "種子機關槍在命中檢定時減少2。種子機關槍是散射攻擊。最多5次攻擊。" },
+  { "name": "燃盡", "range": "遠程(25英尺爆炸)", "type": "火", "category": "特攻", "frequency": "每天1次", "damage": "5d12", "effect": "使用後，如果用戶只有火屬性，則變為一般屬性，如果用戶是火屬性和其他屬性，則失去火屬性. 此效果持續10分鐘。" },
+  { "name": "妒火", "range": "遠程（30英尺，10英尺波）", "type": "火", "category": "特攻", "frequency": "每天1次", "damage": "2d12", "effect": "如果目標在過去2分鐘內有任何屬性提升，妒火會燒傷目標。" },
+  { "name": "保護色", "range": "自身", "type": "一般", "category": "效果", "frequency": "隨時", "damage": "--", "effect": "你的屬性會根據當前環境變化一分鐘。（如果你在草地上，屬性為草屬性；如果你在水中，屬性為水屬性；如果你在山上，屬性為岩石屬性；等等。）" },
+  { "name": "皮卡丘Ｚ皮卡皮卡必殺擊", "range": "近戰", "type": "電", "category": "攻擊", "frequency": "每天1次", "damage": "10d12", "effect": "立即移動到目標旁邊，然後進行命中檢定。 命中時，目標會麻痺。" },
+  { "name": "秘劍·千重濤", "range": "近戰", "type": "惡", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "命中時，目標會獲得一件碎片外套，除非它已經有一件。外套具有以下能力：行動後，投擲1d20；結果為16或更好時，銷毀此外套；否則，受到2d4傷害。 此外套持續3分鐘，或者直到你的HP為0或更低。" },
+  { "name": "慶祝", "range": "遠程(25英尺爆炸)", "type": "一般", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "投擲1d20。 投擲20時，除了你自己的屬性外，範圍內的每個友方都會使他們的攻擊、特攻、防禦、特防和速度提升+1，持續10分鐘。 此效果無法疊加。" },
+  { "name": "充電", "range": "自身", "type": "電", "category": "效果", "frequency": "隨時", "damage": "--", "effect": "你下一次電屬性攻擊將造成+2d8傷害。 在此期間，你的特防增加+1。 此效果不可疊加. 此效果在一分鐘後消失。" },
+  { "name": "充電光束", "range": "遠程(10英尺射線)", "type": "電", "category": "特攻", "frequency": "隨時", "damage": "1d12", "effect": "命中後，你的特攻增加+1，持續10分鐘。 此效果不可疊加。" },
+  { "name": "衝破阻礙", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天3次", "damage": "3d6", "effect": "衝破阻礙只能對你在移動過程中穿過的敵人使用。 如果是這樣，你將不再被束縛。 任何使用這個招式的寶可夢仍可在他們的回合內使用一個招式。" },
+  { "name": "喋喋不休", "range": "遠程(10英尺爆炸)", "type": "飛行", "category": "特攻", "frequency": "每天3次", "damage": "3d8", "effect": "命中後，如果你在命中檢定中得到18或更高，所有目標將混亂。" },
+  { "name": "逐步擊破", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "如果對抗具有提升防禦或特防的被動技能的目標，逐步擊破的命中檢定+2。" },
+  { "name": "葉綠爆震", "range": "遠程(30英尺爆炸)", "type": "草", "category": "特攻", "frequency": "每天1次", "damage": "4d12", "effect": "你失去等同於你最大生命值一半的HP，然後你的速度減少3，持續10分鐘。" },
+  { "name": "被選中的節拍器", "range": "自身", "type": "一般", "category": "效果", "frequency": "隨時", "damage": "--", "effect": " 立即使用你選擇的任何招式。 你不能在同一場戰鬥中以這種方式再次使用相同的招式。 你也不能連續兩次或兩個回合使用相同屬性類型的招式。你必須使用一個攻擊招式，不能使用影響狀態或自我目標的招式。" },
+  { "name": "巴投", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "命中時，將目標移動40英尺遠。" },
+  { "name": "貝殼夾擊", "range": "近戰", "type": "水", "category": "攻擊", "frequency": "隨時", "damage": "1d4", "effect": "命中時，目標與你綁定1d4回合。 每回合目標被綁定時，在其回合上受到1d4傷害。" },
+  { "name": "鱗片噪音", "range": "遠程(10英尺爆炸)", "type": "龍", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "命中時，目標的防禦減少2，持續10分鐘。 此效果不能疊加。" },
+  { "name": "魂舞烈音爆", "range": "自身", "type": "龍", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "你失去相當於你最大生命值的1/6的生命值。你的攻擊、特攻、防禦、特防和速度各提升+1，持續10分鐘。 此效果不能疊加。" },
+  { "name": "杖尾鱗甲龍Ｚ熾魂熱舞烈音爆", "range": "近戰（40英尺爆發）", "type": "龍", "category": "特攻", "frequency": "每天1次", "damage": "8d12", "effect": "你的攻擊和特攻提升+2，持續10分鐘。" },
+  { "name": "清除之煙", "range": "遠程（5英尺爆發）", "type": "毒", "category": "特攻", "frequency": "隨時", "damage": "1d12", "effect": "--" },
+  { "name": "清除濁霧", "range": "遠程（20尺）", "type": "毒", "category": "特攻", "frequency": "隨時", "damage": "1d12", "effect": "--" },
+  { "name": "近身戰", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "命中時，你的防禦和特防減少2，持續10分鐘. 此效果不能疊加。" },
+  { "name": "指導", "range": "近戰", "type": "格鬥", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "目標友方的攻擊和防禦提升+2，持續2分鐘。 此效果不能疊加。" },
+  { "name": "全開猛撞", "range": "遠程（20英尺爆發）", "type": "格鬥", "category": "攻擊", "frequency": "每天3次", "damage": "5d12", "effect": "全開猛撞對於被擊中時全開猛撞具有超有效或極其有效的目標是暴擊。" },
+  { "name": "連續拳", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "隨時", "damage": "1d4", "effect": "連續拳在命中檢定時減少2點。連續拳是一種散射攻擊。最多5次攻擊。" },
+  { "name": "復仇", "range": "近戰", "type": "惡", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": " 復仇用作反應。在相鄰敵人用造成傷害的招式擊中你後，使用復仇對敵人造成你受到傷害的1.5倍傷害。 不適用弱點或抗性。" },
+  { "name": "奇異之光", "range": "遠程（20尺）", "type": "幽靈", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "命中時，目標混亂。" },
+  { "name": "念力", "range": "遠程(10英尺)", "type": "超能者", "category": "特攻", "frequency": "隨時", "damage": "1d12", "effect": "命中時，如果你在命中檢定中得到19或更高，目標混亂。" },
+  { "name": "混亂中", "range": "遠程（20尺）", "type": "超能者", "category": "特攻", "frequency": "隨時", "damage": "1d12", "effect": "--" },
+  { "name": "纏繞", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "隨時", "damage": "1d6", "effect": "命中時，目標的速度減少1，持續10分鐘. 此效果不能疊加。" },
+  { "name": "岩石Ｚ毀天滅地巨岩墜", "range": "遠程（60尺，20尺爆炸）", "type": "岩石", "category": "(變量)", "frequency": "每天1次", "damage": "8d12", "effect": "--" },
+  { "name": "紋理", "range": "自身", "type": "一般", "category": "效果", "frequency": "隨時", "damage": "--", "effect": "在自身上放上一層類型外套。 外套具有以下能力：你的類型在兩分鐘內變為與你已學會的招式之一相匹配的類型，或者你的類型在兩分鐘內變為抵抗你最後被擊中的攻擊的類型。" },
+  { "name": "紋理２", "range": "自身", "type": "一般", "category": "效果", "frequency": "隨時", "damage": "--", "effect": "你的類型在兩分鐘內變為抵抗你最後被擊中的攻擊的類型。" },
+  { "name": "核心懲罰者", "range": "遠程（40英尺，10英尺爆炸）", "type": "龍", "category": "特攻", "frequency": "每天3次", "damage": "3d12", "effect": "如果任何目標在本回合之前行動過，它們將失去所有特徵能力10分鐘。" },
+  { "name": "鋼Ｚ超絕螺旋連擊", "range": "近戰(25英尺爆炸)", "type": "鋼", "category": "(變量)", "frequency": "每天1次", "damage": "8d12", "effect": "立即移動到目標旁邊，然後進行命中檢定。" },
+  { "name": "腐蝕氣體", "range": "近戰", "type": "毒", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "命中時，摧毀目標攜帶的道具，如果有的話。腐蝕氣體無法摧毀Mega石。" },
+  { "name": "雙倍奉還", "range": "近戰", "type": "格鬥", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "雙倍奉還用作反應。在敵人用近戰攻擊招式擊中你並造成傷害後，使用雙倍奉還對敵人造成你受到的傷害的兩倍。 不適用弱點或抗性。" },
+  { "name": "渴望", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天3次", "damage": "2d8", "effect": "命中時，偷取目標攜帶的道具，如果有的話。" },
+  { "name": "蟹鉗錘", "range": "近戰", "type": "水", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "蟹鉗錘在命中檢定時減少2點。命中時，如果你在命中檢定中得到18或更高，蟹鉗錘為會心一擊。" },
+  { "name": "戲法防守", "range": "遠程（20英尺爆發）", "type": "妖精", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "給所有盟友和自己穿上狡詐外套。 這件外套具有以下能力：你不會受到敵人的影響或任何狀態的改變。 這件外套持續2回合。" },
+  { "name": "十字劈", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "十字劈在命中檢定時減少2點。命中時，如果你在命中檢定中得到16或更高，十字劈為會心一擊。" },
+  { "name": "十字毒刃", "range": "近戰", "type": "毒", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "命中時，如果你在命中檢定中得到18或更高，十字毒刃為會心一擊並使目標中毒。" },
+  { "name": "咬碎", "range": "近戰", "type": "惡", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "被擊中時，目標的防禦減少1，持續10分鐘. 此效果不能疊加。" },
+  { "name": "撕裂爪", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "被擊中時，目標的防禦減少1，持續10分鐘. 此效果不能疊加。" },
+  { "name": "捏碎", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天1次", "damage": "2d10", "effect": "如果你的生命值是滿的，捏碎的傷害為5d12。" },
+  { "name": "治癒彈幕", "range": "近戰", "type": "一般", "category": "效果", "frequency": "隨時", "damage": "--", "effect": "治癒彈幕不會錯過友方. 如果在上一回合中對同一個人類目標使用了治癒彈幕，該人類目標將被治癒，解除睡眠、燒傷、混亂、麻痺、中毒或中毒狀態。" },
+  { "name": "詛咒", "range": "遠程（20尺）", "type": "幽靈", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "詛咒只能由幽靈屬性的寶可夢使用.被擊中時，你失去相當於最大生命值的1/3的生命值，然後目標被詛咒。" },
+  { "name": "居合劈", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "隨時", "damage": "2d6", "effect": "--" },
+  { "name": "可愛脅迫", "range": "遠程(10英尺)", "type": "一般", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "如果目標是寶可夢且在本回合中尚未行動，你可以選擇它的移動方向、目標和攻擊方式（不能用被控制的寶可夢攻擊非寶可夢目標；在這回合中你了解被控制寶可夢的招式列表）。" },
+  { "name": "惡之波動", "range": "遠程(10英尺)", "type": "惡", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "命中時，如果你在命中檢定中得到16或更高，目標將被定身。" },
+  { "name": "暗黑印記", "range": "遠程(10英尺)", "type": "惡", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "命中時，目標將陷入睡眠狀態。" },
+  { "name": "ＤＤ金勾臂", "range": "近戰", "type": "惡", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "--" },
+  { "name": "暗黑洞", "range": "遠程（40英尺爆發）", "type": "惡", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "所有目標都將陷入無盡睡眠.無盡睡眠的檢定從19開始，不像普通睡眠症狀每回合降低. 只有通過成功檢定才能治癒無盡睡眠. 如果任何人在陷入無盡睡眠時昏迷，他們將被治癒。" },
+  { "name": "魔法閃耀", "range": "遠程（15英尺，10英尺波動）", "type": "妖精", "category": "特攻", "frequency": "每天3次", "damage": "3d8", "effect": "--" },
+  { "name": "裝飾", "range": "近戰", "type": "一般", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "選擇一個友方或自己作為目標. 目標的攻擊、特攻、防禦、特防或速度將在五分鐘內提升+2. 此效果不能疊加。" },
+  { "name": "除霧", "range": "遠程(30英尺爆炸)", "type": "飛行", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "範圍內的任何牆壁、危險、天氣或地形都將被摧毀。" },
+  { "name": "同命", "range": "遠程（50尺）", "type": "幽靈", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": " 如果在下一個回合之前被擊倒，造成你被擊倒的攻擊者的HP將被設為0。" },
+  { "name": "看穿", "range": "自身", "type": "格鬥", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "看穿被用作反應.當你將被招式擊中時，使用看穿來忽略傷害和攻擊的任何效果。" },
+  { "name": "龍Ｚ究極巨龍震天地", "range": "近戰(25英尺爆炸)", "type": "龍", "category": "(變量)", "frequency": "每天1次", "damage": "8d12", "effect": "立即移動到目標旁邊，然後進行命中檢定。" },
+  { "name": "鑽石風暴", "range": "遠程（40英尺爆發）", "type": "岩石", "category": "攻擊", "frequency": "每天3次", "damage": "3d20", "effect": "命中後，你的防禦增加2，持續10分鐘. 此效果不能疊加。" },
+  { "name": "挖洞", "range": "近戰", "type": "地面", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "挖洞是一個需要兩回合的招式. 第一回合，向下挖掘最多40英尺. 第二回合，向下挖掘你的移動速度+40英尺，然後你可以進行挖洞的命中檢定和傷害。" },
+  { "name": "克命爪", "range": "近戰", "type": "毒", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "命中後，如果你在命中檢定中得到14或更高的分數，目標將隨機中毒或麻痺.命中後，如果你在命中檢定中得到18或更高的分數，克命爪將是暴擊。" },
+  { "name": "定身法", "range": "遠程（20尺）", "type": "一般", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "在1分鐘內，目標上次使用的攻擊不能再次使用。" },
+  { "name": "魅惑之聲", "range": "遠程(10英尺)", "type": "妖精", "category": "特攻", "frequency": "隨時", "damage": "1d12", "effect": "你不能錯過特防低於15的目標。" },
+  { "name": "放電", "range": "遠程(10英尺爆炸)", "type": "電", "category": "特攻", "frequency": "每天3次", "damage": "3d8", "effect": "命中後，如果你在命中檢定中得到14或更高的分數，所有目標將被麻痺。" },
+  { "name": "潛水", "range": "近戰", "type": "水", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "潛水是一個需要兩回合的招式. 第一回合，向下游泳最多40英尺，水會對敵人的攻擊造成阻礙，直到你的下一個回合. 第二回合，向下游泳你的移動速度+40英尺，然後你可以進行潛水的命中檢定和傷害。" },
+  { "name": "神聖裁決", "range": "遠程(30英尺，5英尺爆炸)", "type": "一般", "category": "特攻", "frequency": "每天1次", "damage": "5d12", "effect": "神聖裁決的屬性在使用時選擇，可以使用攻擊進行命中檢定和傷害，而不是特攻。" },
+  { "name": "迷昏拳", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "命中時，如果你在命中檢定中獲得16或更高，目標會混亂。" },
+  { "name": "塗鴉", "range": "遠程(40英尺)", "type": "一般", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "命中時，獲得目標擁有的每個特徵特性，持續10分鐘. 描繪一次只能從一個目標那裡獲得特徵特性。" },
+  { "name": "破滅之願", "range": "遠程(40英尺，30英尺爆炸)", "type": "鋼", "category": "特攻", "frequency": "每天3次", "damage": "5d20", "effect": "當你使用這個攻擊時，立即結束你的回合. 兩回合後，你可以進行破滅之願的命中檢定和傷害骰子。" },
+  { "name": "捨身衝撞", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "命中時，你會失去相當於造成傷害的1/3的HP。" },
+  { "name": "二連擊", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天3次", "damage": "2d8", "effect": "二連擊是一個散射攻擊.它有兩次攻擊。" },
+  { "name": "鋼拳雙擊", "range": "近戰", "type": "鋼", "category": "攻擊", "frequency": "每天3次", "damage": "2d8", "effect": "鋼拳雙擊是一個散射攻擊.它有兩次攻擊. 在任何一次命中中，如果你在命中檢定中獲得14或更高，目標會被定身。" },
+  { "name": "二連踢", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "每天3次", "damage": "2d8", "effect": "二連踢是一個散射攻擊.它有兩次攻擊。" },
+  { "name": "電光雙擊", "range": "近戰", "type": "電", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "電光雙擊只能在你是電屬性時使用.使用後，你失去電屬性特性10分鐘。" },
+  { "name": "連環巴掌", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "隨時", "damage": "1d4", "effect": "連環巴掌在命中檢定時-2.連環巴掌是一次散射攻擊.最多5次攻擊。" },
+  { "name": "影子分身", "range": "自身", "type": "一般", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "你創造3個自己的複製品. 你可以從任何一個複製品進行攻擊，複製品可以佔據彼此最多相距25英尺的空間，儘管沒有一個複製品可以離其他複製品或原始物體超過25英尺.如果一個複製品被擊中，它會消失，你會受到它本應受到的傷害的四分之一. 如果你的複製品被非傷害性攻擊擊中，複製品會消失，你不受影響. 如果你被擊中，所有複製品都會消失。" },
+  { "name": "流星群", "range": "遠程（20英尺，10英尺爆炸）", "type": "龍", "category": "特攻", "frequency": "每天1次", "damage": "5d12", "effect": "使用後，你的特攻會在10分鐘內減少4點. 這個效果不能疊加。" },
+  { "name": "畫龍點睛", "range": "近戰", "type": "龍或飛行", "category": "攻擊", "frequency": "每天3次", "damage": "5d12", "effect": "在攻擊時選擇畫龍點睛的屬性。" },
+  { "name": "龍息", "range": "遠程(10英尺)", "type": "龍", "category": "特攻", "frequency": "隨時", "damage": "2d8", "effect": "命中後，如果你在命中檢定中得到18或更高，目標會麻痺。" },
+  { "name": "龍聲鼓舞", "range": "遠程(30英尺爆炸)", "type": "龍", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "給所有盟友和自己穿上助威外套. 這件外套具有以下能力：你的攻擊在自然18-20時會造成暴擊. 這件外套持續2分鐘。" },
+  { "name": "龍爪", "range": "近戰", "type": "龍", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "--" },
+  { "name": "龍箭", "range": "遠程(10英尺)", "type": "龍", "category": "攻擊", "frequency": "每天3次", "damage": "2d8", "effect": "龍箭是一次散射攻擊.它有兩次攻擊。" },
+  { "name": "巨龍威能", "range": "遠程(30英尺爆炸)", "type": "龍", "category": "特攻", "frequency": "每天1次", "damage": "3d10", "effect": "如果你處於最大生命值狀態，巨龍威能的傷害為5d12。" },
+  { "name": "龍錘", "range": "近戰", "type": "龍", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "--" },
+  { "name": "龍之波動", "range": "遠程(10英尺)", "type": "龍", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "--" },
+  { "name": "龍之怒", "range": "遠程（5英尺）", "type": "龍", "category": "特攻", "frequency": "每天3次", "damage": "25", "effect": "不要對這個傷害添加任何形式的加值。" },
+  { "name": "龍之俯衝", "range": "近戰", "type": "龍", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "龍之俯衝在命中檢定時減少2點.命中後，如果你在命中檢定中獲得16或更高的值，則目標會被定身。" },
+  { "name": "龍尾", "range": "近戰", "type": "龍", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "命中時，將目標移動40英尺遠。" },
+  { "name": "吸取拳", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "每天3次", "damage": "2d8", "effect": "命中時，你回復等同於造成傷害一半的HP。" },
+  { "name": "吸取之吻", "range": "近戰", "type": "妖精", "category": "特攻", "frequency": "每天3次", "damage": "2d8", "effect": "命中時，你回復等同於造成傷害一半的HP。" },
+  { "name": "食夢", "range": "近戰", "type": "超能者", "category": "特攻", "frequency": "每天1次", "damage": "5d12", "effect": "食夢只能攻擊睡眠狀態的目標. 命中後，你回復等同於造成傷害一半的生命值。" },
+  { "name": "啄鑽", "range": "近戰", "type": "飛行", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "--" },
+  { "name": "直衝鑽", "range": "近戰", "type": "地面", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "命中後，如果你在命中檢定中獲得18或更高的值，則直衝鑽是一次暴擊。" },
+  { "name": "鼓擊", "range": "近戰", "type": "草", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "命中時，目標的速度減少1，持續10分鐘. 此效果不能疊加。" },
+  { "name": "二連劈", "range": "近戰", "type": "龍", "category": "攻擊", "frequency": "每天3次", "damage": "2d8", "effect": "二連劈是一次散射攻擊.它有兩次攻擊。" },
+  { "name": "雙翼", "range": "近戰", "type": "飛行", "category": "攻擊", "frequency": "每天3次", "damage": "2d8", "effect": "雙翼是一次散射攻擊.它有兩次攻擊。" },
+  { "name": "極巨砲", "range": "遠程（100英尺）", "type": "龍", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "如果目標處於極巨化、超極巨化或無極巨化狀態，極巨砲造成額外 250 點傷害。" },
+  { "name": "爆裂拳", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "爆裂拳在命中檢定時減少 5 點.命中後，目標會混亂。" },
+  { "name": "大地之力", "range": "遠程(15英尺)", "type": "地面", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "命中時，目標的特防減少 1，持續 10 分鐘. 此效果不能疊加。" },
+  { "name": "地震", "range": "遠程(30英尺爆炸)", "type": "地面", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "--" },
+  { "name": "迴音", "range": "遠程(10英尺)", "type": "一般", "category": "特攻", "frequency": "隨時", "damage": "1d12", "effect": "迴音在上一回合使用後，如果你使用它，傷害額外增加 5 點。" },
+  { "name": "詭異咒語", "range": "遠程(30英尺)", "type": "超能者", "category": "特攻", "frequency": "每天3次", "damage": "3d8", "effect": "被擊中時，目標最後使用的攻擊在 1 分鐘內不能再次使用。" },
+  { "name": "炸蛋", "range": "遠程(15英尺)", "type": "一般", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "炸蛋在命中檢定時減少 2 點。" },
+  { "name": "電氣場地", "range": "範圍", "type": "電", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "你創造一個直徑 60 英尺的電氣化領域的圓圈. 在電氣化領域內接觸地面的任何人都不會被使入睡.在電氣化領域內，電屬性攻擊額外造成 8 點傷害. 這個領域在 2 分鐘後消失。" },
+  { "name": "輸電", "range": "近戰", "type": "電", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "目標下次使用攻擊時，該攻擊被視為電屬性。" },
+  { "name": "電球", "range": "遠程(15英尺)", "type": "電", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "電球只能對比你慢的目標使用。" },
+  { "name": "閃電猛衝", "range": "遠程（20英尺爆發）", "type": "電", "category": "特攻", "frequency": "每天3次", "damage": "5d12", "effect": "電光束對於被擊中時電光束具有超效或極效的目標是會造成暴擊。" },
+  { "name": "電光束", "range": "遠程（30英尺射線）", "type": "電", "category": "特攻", "frequency": "每天1次", "damage": "5d12", "effect": "電光射擊是一個需要兩回合的招式，除非下雨.第一回合，什麼都不做. 在第二回合或下雨時，你的特攻提升+1，持續10分鐘，然後進行電光射擊的命中檢定和傷害。" },
+  { "name": "電網", "range": "遠程(10英尺)", "type": "電", "category": "特攻", "frequency": "每天3次", "damage": "3d8", "effect": "命中時，目標的速度減少 1，持續 10 分鐘. 此效果不能疊加。" },
+  { "name": "火花", "range": "遠程(10英尺)", "type": "火", "category": "特攻", "frequency": "隨時", "damage": "1d12", "effect": "如果你在命中檢定中得到 18 或更高，目標將會灼傷。" },
+  { "name": "火花般的", "range": "遠程（20尺）", "type": "火", "category": "特攻", "frequency": "隨時", "damage": "1d12", "effect": "--" },
+  { "name": "再來一次", "range": "遠程(10英尺)", "type": "一般", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "如果目標可以的話，它必須在接下來的 3 回合內或直到無法為止使用上一個招式。" },
+  { "name": "蠻幹", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天3次", "damage": "--", "effect": "如果目標的 HP 高於你的 HP，命中後目標的 HP 將設置為與你的 HP 相等。" },
+  { "name": "挺住", "range": "自身", "type": "一般", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "挺住用作反應.如果你將被一次攻擊擊倒，使用挺住來保留 1 點 HP。" },
+  { "name": "能量球", "range": "遠程（20尺）", "type": "草", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "命中時，目標的特防減少 1，持續 10 分鐘. 此效果不可疊加。" },
+  { "name": "謎團轉換", "range": "遠程(25英尺)", "type": "一般", "category": "效果", "frequency": "隨時", "damage": "--", "effect": "你變身為另一個非傳奇寶可夢，然後恢復 25 點 HP.你可以使用該寶可夢的任何招式並擁有它的所有特徵. 在變身時，你也可以使用寶可夢在變身時可以合理學習的任何招式. 夢幻保留所有的招式和特徵，但在夢幻變身為其他寶可夢時可以替換非 HP 狀態.每天 3 次，謎之變身可以作為自由動作使用. 謎之變身持續時間由夢幻決定.如果不是夢幻使用，謎之變身將失敗。" },
+  { "name": "噴火", "range": "遠程(30英尺爆炸)", "type": "火", "category": "特攻", "frequency": "每天1次", "damage": "3d10", "effect": "如果你的生命值為滿，噴火的傷害為5d12。" },
+  { "name": "氣場之翼", "range": "遠程(30英尺)", "type": "超能者", "category": "特攻", "frequency": "每天3次", "damage": "3d8", "effect": "命中後，在你的下一個行動中，如果你攻擊敵人，你的招式具有優先權。" },
+  { "name": "無極光束", "range": "遠程（100英尺）", "type": "龍", "category": "特攻", "frequency": "每天3次", "damage": "7d10", "effect": "你不能在下一回合行動。" },
+  { "name": "廣域戰力", "range": "遠程(30英尺)", "type": "超能者", "category": "特攻", "frequency": "每天1次", "damage": "3d12", "effect": "在使用廣域戰力時，如果你在精神場地內，命中時傷害額外+2d12。" },
+  { "name": "大爆炸", "range": "遠程(30英尺爆炸)", "type": "一般", "category": "攻擊", "frequency": "每天1次", "damage": "10d20", "effect": "將你的生命值設為0，然後擲1d20。 在15或更少時，你的生命值設為-100%，你必須進行一次死亡豁免投擲。" },
+  { "name": "神通力", "range": "遠程(10英尺)", "type": "超能者", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "命中時，如果你在命中檢定中得到18或更高，目標將被定身。" },
+  { "name": "伊布Ｚ九彩昇華齊聚頂", "range": "自身", "type": "一般", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "你的攻擊、防禦、特攻、特防和速度在10分鐘內+6。" },
+  { "name": "神速", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "神速具有優先權，且無法被爭奪優先權。" },
+  { "name": "硬撐", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天1次", "damage": "3d8", "effect": "如果你受到影響，使用5d12作為傷害。" },
+  { "name": "妖精之鎖", "range": "遠程(30英尺爆炸)", "type": "妖精", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "直到你的下一個回合，範圍內的寶可夢不能被收回精靈球，也不能被精靈球捕捉。" },
+  { "name": "妖精之風", "range": "遠程（20尺）", "type": "妖精", "category": "特攻", "frequency": "隨時", "damage": "1d12", "effect": "--" },
+  { "name": "擊掌奇襲", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "隨時", "damage": "2d6", "effect": "擊掌奇襲具有優先權。擊掌奇襲只能在遭遇中的第一個行動中使用。 命中時，目標會被定身。" },
+  { "name": "假跪真撞", "range": "近戰", "type": "惡", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "防禦低於20的目標不會被錯過。" },
+  { "name": "出奇一擊", "range": "近戰", "type": "惡", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "防禦低於15的目標不會被錯過。" },
+  { "name": "致命針刺", "range": "近戰", "type": "蟲", "category": "攻擊", "frequency": "隨時", "damage": "2d8", "effect": "如果你用致命針刺擊倒目標，你的攻擊力將在10分鐘內增加2點。 這個效果不能疊加。" },
+  { "name": "火之舞", "range": "遠程（20尺）", "type": "火", "category": "特攻", "frequency": "每天1次", "damage": "3d12", "effect": "命中時，你的特攻將在10分鐘內增加2點。 這個效果不能疊加。" },
+  { "name": "怒火中燒", "range": "遠程（20尺）", "type": "惡", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "命中時，如果你在命中檢定中得到16或更高，目標將被定身。" },
+  { "name": "甩肉", "range": "自身", "type": "一般", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "你失去等同於最大生命值一半的HP，然後你的攻擊力、特攻和速度將在10分鐘內增加2點。" },
+  { "name": "搏命", "range": "近戰", "type": "格鬥", "category": "特攻", "frequency": "每天1次", "damage": "--", "effect": "命中時，你的HP設為0，造成等同於你失去的HP的傷害。" },
+  { "name": "大字爆炎", "range": "遠程（40英尺，10英尺爆炸）", "type": "火", "category": "特攻", "frequency": "每天1次", "damage": "5d12", "effect": "大字爆炎在命中檢定時除非是晴天，否則減少2點。命中時，如果你在命中檢定中得到18或更高，目標將被灼傷。" },
+  { "name": "火焰牙", "range": "近戰", "type": "火", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "命中時，如果你在命中檢定中得到18或更高，目標將隨機被定身或灼傷。" },
+  { "name": "火焰鞭", "range": "近戰", "type": "火", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "被擊中時，目標的防禦減少1，持續10分鐘。 此效果不能疊加。" },
+  { "name": "火焰拳", "range": "近戰", "type": "火", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "命中時，如果你在命中檢定中得到17或更高，目標將被灼傷。" },
+  { "name": "火焰旋渦", "range": "遠程（20尺）", "type": "火", "category": "特攻", "frequency": "每天3次", "damage": "1d4", "effect": "命中時，目標將被束縛在原地1d4回合。 目標被束縛的每個回合，在它的回合上會受到1d4點傷害。" },
+  { "name": "迎頭一擊", "range": "近戰", "type": "蟲", "category": "攻擊", "frequency": "每天1次", "damage": "3d10", "effect": "迎頭一擊具有優先權。迎頭一擊只能在遭遇中的第一個行動中使用。 命中時，目標定身。" },
+  { "name": "鰓咬", "range": "近戰", "type": "水", "category": "攻擊", "frequency": "每天1次", "damage": "3d8", "effect": "如果目標在本回合尚未行動過，鰓咬造成額外+2d8傷害。" },
+  { "name": "地裂", "range": "遠程(25英尺光束)", "type": "地面", "category": "攻擊", "frequency": "每天1次", "damage": "--", "effect": "命中時，擲1d20。 自然結果為17、18、19或20時，目標HP設為0。" },
+  { "name": "抓狂", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天1次", "damage": "1d10", "effect": "如果你的最大HP不足一半，抓狂的傷害為1d20。 如果你的HP不足5點，抓狂的傷害為5d12。" },
+  { "name": "烈焰濺射", "range": "遠程(20尺，5尺爆炸)", "type": "火", "category": "特攻", "frequency": "每天3次", "damage": "3d8", "effect": "--" },
+  { "name": "蓄能焰襲", "range": "近戰", "type": "火", "category": "攻擊", "frequency": "隨時", "damage": "2d8", "effect": "命中時，你的速度+1，持續10分鐘。 此效果不可疊加。" },
+  { "name": "火焰輪", "range": "近戰", "type": "火", "category": "攻擊", "frequency": "隨時", "damage": "2d8", "effect": "如果你在命中檢定中得到18或更高，目標將會灼傷。" },
+  { "name": "噴射火焰", "range": "遠程（20英尺光束）", "type": "火", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "如果你在命中檢定中得到18或更高，目標將會灼傷。" },
+  { "name": "閃焰衝鋒", "range": "近戰", "type": "火", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "命中時，你失去等同於造成傷害1/3的HP，如果命中檢定達到18或更高，目標灼傷。" },
+  { "name": "閃光", "range": "遠程(10英尺)", "type": "一般", "category": "效果", "frequency": "隨時", "damage": "--", "effect": "命中時，目標在下一回合的命中檢定-1。 此效果不可疊加。" },
+  { "name": "加農光炮", "range": "遠程（20尺）", "type": "鋼", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "命中時，目標的特防減少1，持續10分鐘。 此效果不可疊加。" },
+  { "name": "閃光踢", "range": "近戰", "type": "電", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "命中後，如果你在命中檢定中得到16或更高，目標將麻痺。" },
+  { "name": "吹捧", "range": "遠程(10英尺)", "type": "一般", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "命中後，目標將混亂，目標的特攻+4，直到他們不再混亂。" },
+  { "name": "花朵加農炮", "range": "遠程(40尺，20尺爆炸)", "type": "妖精", "category": "特攻", "frequency": "每天3次", "damage": "5d20", "effect": "--" },
+  { "name": "花療", "range": "近戰", "type": "妖精", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "選擇一個友方或自己作為目標。 目標回復HP，數值等於目標最大HP的一半。如果在青草場地內，目標回復HP，數值等於目標最大HP的3/4。" },
+  { "name": "千變萬花(場地)", "range": "範圍", "type": "妖精", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "你創造一個直徑60尺的花之地。 在花之地內，所有草屬性和妖精屬性的寶可夢的防禦和特防+1。這個地形在2分鐘後消失。" },
+  { "name": "千變萬花", "range": "遠程(30英尺)", "type": "草", "category": "攻擊", "frequency": "每天3次", "damage": "2d8", "effect": "命中時，千變萬花總是會造成暴擊。你不能錯過防禦低於15的目標。" },
+  { "name": "飛翔", "range": "近戰", "type": "飛行", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "飛翔是一個需要兩回合的招式。 第一回合，向上飛行40尺。第二回合，飛行距離為你的移動速度+40尺，然後你可以進行飛翔的命中檢定和傷害。" },
+  { "name": "飛身重壓", "range": "近戰", "type": "格鬥/飛行", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "飛身重壓對於效果來說既是飛行類型又是格鬥類型的招式。" },
+  { "name": "真氣彈", "range": "遠程（30英尺）", "type": "格鬥", "category": "特攻", "frequency": "每天1次", "damage": "5d12", "effect": "真氣彈在命中檢定時有-2。命中後，目標的特防減少1，持續10分鐘。 這個效果不能疊加。" },
+  { "name": "真氣拳", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "每天3次", "damage": "5d12", "effect": "真氣拳是一個需要兩回合的招式。 第一回合：如果在你的下一個回合之前有人攻擊你，你將被定身。第二回合，移動兩倍的移動速度，然後進行真氣拳的命中檢定和傷害骰擲。" },
+  { "name": "看我嘛", "range": "遠程(30英尺爆炸)", "type": "一般", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "命中後，所有受影響的敵人只會攻擊你，直到你被擊倒。" },
+  { "name": "發勁", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "如果你在命中時得到14或更高的命中檢定，目標將會麻痺。" },
+  { "name": "識破", "range": "自身", "type": "一般", "category": "效果", "frequency": "隨時", "damage": "--", "effect": "你可以在兩分鐘內用一般和格鬥類型的招式攻擊幽靈類型，就好像它們對這些類型的攻擊不免疫一樣。" },
+  { "name": "森林咒術", "range": "遠程(15英尺)", "type": "草", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "命中後，在目標身上放上一件森林外套。 外套具有以下能力：你失去當前的屬性，變成純粹的草屬性，持續10分鐘。" },
+  { "name": "冷凍乾燥", "range": "遠程(10英尺)", "type": "冰", "category": "特攻", "frequency": "每天3次", "damage": "3d8", "effect": "冷凍乾燥對水屬性招式超有效。 命中後，如果在命中檢定中得到18或更高，目標將被冰凍。" },
+  { "name": "冰凍伏特", "range": "遠程(40尺，20尺爆炸)", "type": "冰", "category": "攻擊", "frequency": "每天3次", "damage": "3d12", "effect": "命中時，如果你在命中檢定中得到12或更高，目標將陷入麻痺狀態。" },
+  { "name": "冰冷視線", "range": "遠程（20尺）", "type": "超能者", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "擊中時，如果你在命中檢定中得到18或更高，目標將被凍結。" },
+  { "name": "瘋狂植物", "range": "遠程(25英尺光束)", "type": "草", "category": "特攻", "frequency": "每天1次", "damage": "5d20", "effect": "瘋狂植物有一個充能回合，並且在命中檢定期間減少2點。" },
+  { "name": "冰息", "range": "遠程(10英尺)", "type": "冰", "category": "特攻", "frequency": "每天3次", "damage": "2d8", "effect": "冰息在命中檢定期間減少2點。命中時，冰息總是算作暴擊。" },
+  { "name": "冰踢", "range": "近戰", "type": "冰", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "命中時，如果你在命中檢定中得到16或更高，目標將陷入冰凍狀態。" },
+  { "name": "遷怒", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "只有在忠誠度少於1時才能使用遷怒。" },
+  { "name": "亂擊", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "隨時", "damage": "1d4", "effect": "亂擊在命中檢定期間減少2點。亂擊是一個散射攻擊。最多5次攻擊。" },
+  { "name": "連斬", "range": "近戰", "type": "蟲", "category": "攻擊", "frequency": "隨時", "damage": "1d4", "effect": "每次成功對同一目標使用連斬時，將1d8添加到連斬的傷害中。" },
+  { "name": "亂抓", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "隨時", "damage": "1d4", "effect": "亂抓在命中檢定期間減少2點。亂抓是一個散射攻擊。最多5次攻擊。" },
+  { "name": "預知未來", "range": "遠程(30英尺)", "type": "超能者", "category": "特攻", "frequency": "每天1次", "damage": "5d12", "effect": "當你使用這個攻擊，立即結束你的回合。 兩個回合後，選擇距離你30英尺內的任何目標作為未來視覺的目標，然後你可以進行未來視覺的命中檢定和傷害投擲。" },
+  { "name": "交錯閃電", "range": "遠程（20尺）", "type": "電", "category": "攻擊", "frequency": "每天3次", "damage": "3d12", "effect": "如果在過去的20秒內有任何人使用了交錯火焰，交錯閃電的傷害為7d12。" },
+  { "name": "交錯火焰", "range": "遠程（20尺）", "type": "火", "category": "特攻", "frequency": "每天3次", "damage": "3d12", "effect": "揚如果在過去的20秒內有任何人使用了交錯閃電，交錯火焰的傷害為7d12。" },
+  { "name": "超極巨蝶影蠱惑", "range": "遠程（80英尺，30英尺爆炸）", "type": "蟲", "category": "(變量)", "frequency": "隨時", "damage": "3d12", "effect": "命中時，所有目標隨機中毒、麻痺或進入睡眠狀態。在接下來的一輪中你無法行動。" },
+  { "name": "超極巨水炮轟滅", "range": "遠程（80英尺，30英尺爆炸）", "type": "水", "category": "(變量)", "frequency": "隨時", "damage": "4d12", "effect": "命中時，所有目標在行動時受到1d4點傷害，直到你不再處於巨型化狀態。在接下來的一輪中你無法行動。" },
+  { "name": "超極巨百火焚野", "range": "遠程（80英尺，30英尺爆炸）", "type": "火", "category": "(變量)", "frequency": "隨時", "damage": "2d12", "effect": "命中時，所有目標被束縛在地面上1d4輪。 在接下來的一輪中你無法行動。" },
+  { "name": "超極巨會心一擊", "range": "遠程（80英尺，30英尺爆炸）", "type": "格鬥", "category": "(變量)", "frequency": "隨時", "damage": "2d12", "effect": "命中時，所有60英尺範圍內的盟友在自然擲骰得到19和20時造成暴擊，直到你不再處於巨型化狀態。在接下來的一輪中你無法行動。" },
+  { "name": "超極巨熱情擁抱", "range": "遠程（80英尺，30英尺爆炸）", "type": "一般", "category": "(變量)", "frequency": "隨時", "damage": "3d12", "effect": "命中時，所有目標被著迷。在接下來的一輪中你無法行動。" },
+  { "name": "超極巨劣化衰變", "range": "遠程（80英尺，30英尺爆炸）", "type": "龍", "category": "(變量)", "frequency": "隨時", "damage": "3d12", "effect": "擊中時，所有目標在你不再處於極巨化狀態之前都無法使用他們上次使用的招式。你在下一回合無法行動。" },
+  { "name": "超極巨狂擂亂打", "range": "遠程（80英尺，30英尺爆炸）", "type": "草", "category": "(變量)", "frequency": "隨時", "damage": "6d12", "effect": "你不能在下一回合行動。" },
+  { "name": "超極巨幸福圓滿", "range": "遠程（80英尺，30英尺爆炸）", "type": "妖精", "category": "(變量)", "frequency": "隨時", "damage": "2d12", "effect": "擊中時，所有60英尺範圍內的盟友恢復1d12點HP。你在下一回合無法行動。" },
+  { "name": "超極巨破陣火球", "range": "遠程（80英尺，30英尺爆炸）", "type": "火", "category": "(變量)", "frequency": "隨時", "damage": "6d12", "effect": "你不能在下一回合行動。" },
+  { "name": "超極味", "range": "遠程（80英尺，30英尺爆炸）", "type": "草", "category": "(變量)", "frequency": "隨時", "damage": "2d12", "effect": "擊中時，所有60英尺範圍內的盟友被治癒任何疾病。 你在下一回合無法行動。" },
+  { "name": "超極巨激漩泡渦", "range": "遠程（80英尺，30英尺爆炸）", "type": "水", "category": "(變量)", "frequency": "隨時", "damage": "4d12", "effect": "擊中時，所有目標的速度降低2，持續2分鐘。 你在下一回合無法行動。" },
+  { "name": "超極巨特大金幣", "range": "遠程（80英尺，30英尺爆炸）", "type": "一般", "category": "(變量)", "frequency": "隨時", "damage": "3d12", "effect": "擊中時，所有目標混亂。你在下一回合無法行動。" },
+  { "name": "超極巨天道七星", "range": "遠程（80英尺，30英尺爆炸）", "type": "超能者", "category": "(變量)", "frequency": "隨時", "damage": "4d12", "effect": "在爆炸中心，你創造一個直徑60英尺的重力領域。 在領域內，寶可夢不能離開地面，任何在空中的寶可夢都被拉到地面上。 這個領域在2分鐘後消失。 你在下一回合無法行動。" },
+  { "name": "超極巨狙擊神射", "range": "遠程（80英尺，30英尺爆炸）", "type": "水", "category": "(變量)", "frequency": "隨時", "damage": "6d12", "effect": "你不能在下一回合行動。" },
+  { "name": "超極巨臭氣沖天", "range": "遠程（80英尺，30英尺爆炸）", "type": "毒", "category": "(變量)", "frequency": "隨時", "damage": "3d12", "effect": "擊中時，所有目標中毒。你在下一回合無法行動。" },
+  { "name": "超極巨熔毀", "range": "遠程（80英尺，30英尺爆炸）", "type": "鋼", "category": "(變量)", "frequency": "隨時", "damage": "3d12", "effect": "擊中時，所有目標在1分鐘內不能使用他們上一個行動中使用的招式。" },
+  { "name": "超極巨奪命一擊", "range": "遠程（80英尺，30英尺爆炸）", "type": "惡", "category": "(變量)", "frequency": "隨時", "damage": "3d12", "effect": "超極巨奪命一擊的效果不能被忽視。 目標無法重定向、預防或減少超極巨奪命一擊的傷害.你在下一回合無法行動。" },
+  { "name": "超極巨流水連擊", "range": "遠程（80英尺，30英尺爆炸）", "type": "水", "category": "(變量)", "frequency": "隨時", "damage": "3d12", "effect": "超極巨流水連擊的效果不能被忽視。 目標無法重定向、預防或減少超極巨流水連擊的傷害.你在下一回合無法行動。" },
+  { "name": "超極巨資源再生", "range": "遠程（80英尺，30英尺爆炸）", "type": "一般", "category": "(變量)", "frequency": "隨時", "damage": "3d12", "effect": "命中時，所有60英尺範圍內的盟友將恢復他們在本次戰鬥中可能使用的任何果實，除非他們在本次戰鬥中已經恢復了一次果實。 你在下一回合無法行動。" },
+  { "name": "超極巨極光旋律", "range": "遠程（80英尺，30英尺爆炸）", "type": "冰", "category": "(變量)", "frequency": "隨時", "damage": "2d12", "effect": "命中時，你的防禦和特防增加1點，持續1分鐘.你在下一回合無法行動。" },
+  { "name": "超極巨沙塵漫天", "range": "遠程（80英尺，30英尺爆炸）", "type": "地面", "category": "(變量)", "frequency": "隨時", "damage": "2d12", "effect": "命中時，所有目標被束縛在地面上1d4輪。 在接下來的一輪中你無法行動。" },
+  { "name": "超極巨天譴雷誅", "range": "遠程（80英尺，30英尺爆炸）", "type": "妖精", "category": "(變量)", "frequency": "隨時", "damage": "3d12", "effect": "擊中時，所有目標混亂.你在下一回合無法行動。" },
+  { "name": "超極巨睡魔", "range": "遠程（80英尺，30英尺爆炸）", "type": "惡", "category": "(變量)", "frequency": "隨時", "damage": "3d12", "effect": "命中時，所有目標在他們的下一個回合後進入睡眠狀態。 你在下一回合無法行動。" },
+  { "name": "超極巨鋼鐵陣法", "range": "遠程（80英尺，30英尺爆炸）", "type": "鋼", "category": "(變量)", "frequency": "隨時", "damage": "2d12", "effect": "命中時，在爆炸區域放置撒菱危險。 撒菱危險具有以下能力：當敵方在他們的回合中穿過撒菱危險並且在地面上時，他們失去最大生命值的1/8.此危險在2分鐘後消失。 你在下一回合無法行動。" },
+  { "name": "超極巨岩陣以待", "range": "遠程（80英尺，30英尺爆炸）", "type": "岩石", "category": "(變量)", "frequency": "隨時", "damage": "2d12", "effect": "命中時，在爆炸區域放置2個隱形岩陷阱。 隱形岩陷阱具有以下能力：如果敵人在20英尺內移動到隱形岩陷阱附近，它將向敵人投擲自身，摧毀自身並對敵人造成2d12岩石屬性傷害，無需進行命中檢定.下一回合你無法行動。" },
+  { "name": "超極巨異毒電場", "range": "遠程（80英尺，30英尺爆炸）", "type": "電", "category": "(變量)", "frequency": "隨時", "damage": "3d12", "effect": "命中時，所有目標隨機中毒或麻痺.下一回合你無法行動。" },
+  { "name": "超極巨幻影幽魂", "range": "遠程（80英尺，30英尺爆炸）", "type": "幽靈", "category": "(變量)", "frequency": "隨時", "damage": "2d12", "effect": "命中時，所有目標被束縛在地面上1d4輪。 在接下來的一輪中你無法行動。" },
+  { "name": "超極巨灰飛鞭滅", "range": "遠程（80英尺，30英尺爆炸）", "type": "草", "category": "(變量)", "frequency": "隨時", "damage": "4d12", "effect": "命中時，所有目標在行動時受到1d4點傷害，直到你不再處於巨型化狀態.在接下來的一輪中你無法行動。" },
+  { "name": "超極巨炎石噴發", "range": "遠程（80英尺，30英尺爆炸）", "type": "岩石", "category": "(變量)", "frequency": "隨時", "damage": "4d12", "effect": "命中時，所有目標在行動時受到1d4點傷害，直到你不再處於巨型化狀態.在接下來的一輪中你無法行動。" },
+  { "name": "超極巨深淵滅焰", "range": "遠程（80英尺，30英尺爆炸）", "type": "火", "category": "(變量)", "frequency": "隨時", "damage": "4d12", "effect": "命中時，所有目標在行動時受到1d4點傷害，直到你不再處於巨型化狀態.在接下來的一輪中你無法行動。" },
+  { "name": "超極巨旋風襲卷", "range": "遠程（80英尺，30英尺爆炸）", "type": "飛行", "category": "(變量)", "frequency": "隨時", "damage": "4d12", "effect": "命中時，移除戰場上的所有天氣、地形、陷阱、外套。 下一回合你無法行動。" },
+  { "name": "胃液", "range": "遠程(10英尺)", "type": "毒", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "命中時，目標無法受益於任何特徵，除非是提升其屬性的特徵，持續10分鐘。" },
+  { "name": "齒輪飛盤", "range": "近戰", "type": "鋼", "category": "攻擊", "frequency": "每天3次", "damage": "2d8", "effect": "齒輪飛盤是一個散射攻擊.它有兩次攻擊。" },
+  { "name": "大地掌控", "range": "自身", "type": "妖精", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "你的特攻、特防和速度在10分鐘內增加4點。" },
+  { "name": "終極吸取", "range": "近戰", "type": "草", "category": "特攻", "frequency": "每天1次", "damage": "3d12", "effect": "命中時，你回復等同於造成傷害一半的HP。" },
+  { "name": "終極衝擊", "range": "近戰(10英尺爆發)", "type": "一般", "category": "攻擊", "frequency": "每天1次", "damage": "5d20", "effect": "終極衝擊需要充能回合，並在命中檢定時減少2點。" },
+  { "name": "巨力錘", "range": "遠程（5英尺爆發）", "type": "鋼", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "--" },
+  { "name": "電Ｚ終極伏特狂雷閃", "range": "遠程（60尺，20尺爆炸）", "type": "電", "category": "(變量)", "frequency": "每天1次", "damage": "8d12", "effect": "--" },
+  { "name": "雪矛", "range": "遠程(50英尺爆炸)", "type": "冰", "category": "攻擊", "frequency": "每天3次", "damage": "5d20", "effect": "--" },
+  { "name": "冰封世界", "range": "遠程(40英尺)", "type": "冰", "category": "攻擊", "frequency": "每天3次", "damage": "3d12", "effect": "命中時，目標的速度減少1，持續10分鐘. 此效果不能疊加。" },
+  { "name": "巨劍突擊", "range": "近戰", "type": "龍", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "直到你的下一個回合，你受到成功攻擊造成的傷害翻倍。" },
+  { "name": "大蛇瞪眼", "range": "遠程（20尺）", "type": "一般", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "命中時，目標麻痺。" },
+  { "name": "打草結", "range": "近戰", "type": "草", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "打草結只能選擇更重的目標。" },
+  { "name": "草笛", "range": "遠程（20英尺爆發）", "type": "草", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "草笛在命中檢定時減少5點.命中後，所有目標陷入睡眠狀態。" },
+  { "name": "青草滑梯", "range": "近戰", "type": "草", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "青草滑梯在青草場地時具有優先級。" },
+  { "name": "青草場地", "range": "範圍", "type": "草", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "你創造一個直徑60英尺的青草場地圈. 在青草場地內行動的任何人在行動後恢復1d12點HP. 在青草場地內，草屬性攻擊額外造成8點傷害. 這個場地在2分鐘後消失。" },
+  { "name": "萬有引力", "range": "遠程(15英尺)", "type": "草", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "被擊中時，目標的防禦減少1，持續10分鐘. 此效果不能疊加。" },
+  { "name": "重力", "range": "範圍", "type": "超能者", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "你創造一個直徑60英尺的重力場地圈. 在這個場地內，寶可夢不能離開地面，任何在空中的寶可夢都被拉到地面上. 這個場地在2分鐘後消失。" },
+  { "name": "守護者標誌", "range": "遠程(25英尺)", "type": "一般", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "守護者標誌作為一次反應使用（如果你本回合尚未行動）. 如果你的寶可夢、你的助手寶可夢或你的同伴寶可夢受到攻擊，忽略傷害和攻擊的任何效果。" },
+  { "name": "極落鉗", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天1次", "damage": "--", "effect": "命中時，擲1d20. 自然結果為17、18、19或20時，目標HP設為0。" },
+  { "name": "垃圾射擊", "range": "遠程（20英尺，10英尺爆炸）", "type": "毒", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "如果你在命中檢定中得到14或更高，目標將中毒。" },
+  { "name": "起風", "range": "遠程（20尺）", "type": "飛行", "category": "特攻", "frequency": "隨時", "damage": "1d12", "effect": "如果目標至少在20英尺高空中飛行，起風造成額外1d20傷害。" },
+  { "name": "陀螺球", "range": "近戰", "type": "鋼", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "陀螺球只能攻擊速度更快的目標。" },
+  { "name": "冰雹", "range": "範圍", "type": "冰", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "你製造一個直徑為60英尺的冰雹天氣圈. 在冰雹天氣中行動的人在行動後會受到2d4傷害，除非他們是冰屬性.這種天氣在2分鐘後消失。" },
+  { "name": "臂錘", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "命中時，你的速度會減少1，持續10分鐘. 這個效果不能疊加。" },
+  { "name": "黑霧", "range": "範圍", "type": "冰", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "你製造一個直徑為60英尺的霧天氣圈. 在霧天氣中，所有影響屬性的特徵都會被禁用. 在霧天氣中，屬性不能被任何東西改變. 這種天氣在2分鐘後消失。" },
+  { "name": "爆炸頭突擊", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天3次", "damage": "3d12", "effect": "命中時，你失去相當於造成傷害四分之一的生命值。" },
+  { "name": "突飛猛撲", "range": "近戰", "type": "地面", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "命中時，你的防禦和特防會減少2，持續10分鐘. 這個效果不能疊加。" },
+  { "name": "雙刃頭鎚", "range": "近戰", "type": "岩石", "category": "攻擊", "frequency": "每天1次", "damage": "7d12", "effect": "受到攻擊時，你失去造成傷害一半的HP.雙刃頭鎚在命中檢定時有-2。" },
+  { "name": "頭鎚", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "隨時", "damage": "2d8", "effect": "命中時，如果你在命中檢定中得到18或更高，目標將被定身。" },
+  { "name": "治癒鈴聲", "range": "遠程(10英尺爆炸)", "type": "一般", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "你和所有範圍內的盟友都被治癒所有痛苦。" },
+  { "name": "回復封鎖", "range": "遠程(30英尺爆炸)", "type": "超能者", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "所有受影響的目標在1分鐘內不能被治癒或自癒。" },
+  { "name": "回復指令", "range": "自身", "type": "蟲", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "你被治癒的HP等於你最大HP的一半。" },
+  { "name": "治癒波動", "range": "遠程(10英尺)", "type": "超能者", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "選擇一個盟友或自己作為目標. 目標被治癒的HP等於目標最大HP的一半。" },
+  { "name": "治癒之願", "range": "近戰", "type": "超能者", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "你的HP被設為0，然後目標盟友被治癒到最大HP並且被治癒所有痛苦。" },
+  { "name": "愛心印章", "range": "近戰", "type": "超能者", "category": "攻擊", "frequency": "隨時", "damage": "2d8", "effect": "命中時，如果你在命中檢定中得到18或更高，目標將被定身。" },
+  { "name": "高溫重壓", "range": "近戰", "type": "火", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "高溫重壓只能選擇比自己輕的目標。" },
+  { "name": "高溫閃光", "range": "遠程(10英尺)", "type": "火", "category": "效果", "frequency": "隨時", "damage": "1d4", "effect": "受到攻擊時，目標在下一回合的命中檢定時減1. 這個效果不能疊加。" },
+  { "name": "熱風", "range": "遠程(25英尺爆炸)", "type": "火", "category": "特攻", "frequency": "每天1次", "damage": "3d12", "effect": "受到攻擊時，如果你在命中檢定中得到17或更高，目標會被灼傷。" },
+  { "name": "重磅衝撞", "range": "近戰", "type": "鋼", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "重磅衝撞只能選擇比自己輕的目標。" },
+  { "name": "幫助", "range": "近戰", "type": "一般", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "目標盟友在本回合的下一個攻擊將額外造成+1d20傷害。" },
+  { "name": "禍不單行", "range": "遠程(15英尺)", "type": "幽靈", "category": "特攻", "frequency": "每天3次", "damage": "3d8", "effect": "如果目標受到影響，禍不單行的傷害為5d8。" },
+  { "name": "覺醒力量", "range": "遠程(25英尺)", "type": "(變量)", "category": "特攻", "frequency": "每天3次", "damage": "3d8", "effect": "當覺醒力量被添加到招式列表中時，隨機分配一個屬性給它。" },
+  { "name": "十萬馬力", "range": "近戰", "type": "地面", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "--" },
+  { "name": "飛膝踢", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "飛膝踢在命中檢定時減少2點.如果未命中，你失去最大生命值的一半。" },
+  { "name": "手下留情", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "隨時", "damage": "2d6", "effect": "手下留情不能用來擊倒目標. 相反，目標仍然會有 1 點生命值。" },
+  { "name": "角撞", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "隨時", "damage": "2d8", "effect": "--" },
+  { "name": "角鑽", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天1次", "damage": "--", "effect": "命中時，擲1d20. 自然結果為17、18、19或20時，目標HP設為0。" },
+  { "name": "木角", "range": "近戰", "type": "草", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "命中時，你回復等同於造成傷害一半的HP。" },
+  { "name": "暴風", "range": "遠程（25英尺，10英尺爆炸）", "type": "飛行", "category": "特攻", "frequency": "每天1次", "damage": "5d12", "effect": "暴風在命中檢定時減少2點，除非下雨.命中後，如果在命中檢定中得到14或更高，目標會混亂。" },
+  { "name": "加農水炮", "range": "遠程(25英尺光束)", "type": "水", "category": "特攻", "frequency": "每天1次", "damage": "5d20", "effect": "加農水炮有一個充能回合和在命中檢定時減少2點。" },
+  { "name": "水炮", "range": "遠程（30英尺射線）", "type": "水", "category": "特攻", "frequency": "每天1次", "damage": "5d12", "effect": "水炮在命中檢定時減少2點，除非下雨。" },
+  { "name": "水蒸氣", "range": "遠程（40英尺光束）", "type": "水", "category": "特攻", "frequency": "每天3次", "damage": "3d12", "effect": "水蒸氣不會受到陽光天氣的削弱，而是造成額外8點傷害。" },
+  { "name": "水之潮", "range": "遠程（30英尺光束，10英尺爆炸）", "type": "水", "category": "特攻", "frequency": "每天1次", "damage": "5d12", "effect": "如果下雨，水之潮在命中檢定時增加2點。" },
+  { "name": "水Ｚ超級水流大漩渦", "range": "遠程（60尺，20尺爆炸）", "type": "水", "category": "(變量)", "frequency": "每天1次", "damage": "8d12", "effect": "--" },
+  { "name": "破壞光線", "range": "遠程(25英尺光束)", "type": "一般", "category": "特攻", "frequency": "每天1次", "damage": "5d20", "effect": "破壞光線有一個充能回合和在命中檢定時減少2點。" },
+  { "name": "超級爆炸", "range": "遠程(25英尺光束)", "type": "一般", "category": "特攻", "frequency": "每天1次", "damage": "5d20", "effect": "超能者在命中檢定時減少2點.你可以讓超能者成為一種超能力類型的攻擊。" },
+  { "name": "強力鑽", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "強力鑽無法被反應招式阻止。" },
+  { "name": "終結門牙", "range": "近戰", "type": "一般", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "命中時，如果你在命中檢定中得到18或更高，目標將被定身。" },
+  { "name": "異次元猛攻", "range": "遠程（40英尺，10英尺爆炸）", "type": "惡", "category": "特攻", "frequency": "每天3次", "damage": "3d12", "effect": "異次元猛攻不會丟失。" },
+  { "name": "異次元洞", "range": "遠程（40英尺，10英尺爆炸）", "type": "幽靈", "category": "攻擊", "frequency": "每天3次", "damage": "3d12", "effect": "異次元洞不會丟失。" },
+  { "name": "巨聲", "range": "遠程（30英尺射線）", "type": "一般", "category": "特攻", "frequency": "每天1次", "damage": "3d12", "effect": "--" },
+  { "name": "催眠術", "range": "遠程(10英尺)", "type": "超能者", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "催眠術在命中檢定時減少4點.命中後，目標陷入睡眠狀態。" },
+  { "name": "冰球", "range": "近戰", "type": "冰", "category": "攻擊", "frequency": "隨時", "damage": "1d4", "effect": "每次成功對同一目標使用冰球時，增加1d8的冰球傷害。" },
+  { "name": "冰凍光束", "range": "遠程（20英尺光束）", "type": "冰", "category": "特攻", "frequency": "每天3次", "damage": "3d10", "effect": "擊中時，如果你在命中檢定中得到18或更高，目標將被凍結。" },
+  { "name": "極寒冷焰", "range": "遠程(40尺，20尺爆炸)", "type": "冰", "category": "特攻", "frequency": "每天3次", "damage": "3d12", "effect": "命中後，如果在命中檢定中得到12或更高，目標將被灼傷。" },
+  { "name": "冰凍牙", "range": "近戰", "type": "冰", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "命中後，如果在命中檢定中得到18或更高，目標將隨機進入定身或冰凍狀態。" },
+  { "name": "冰錘", "range": "近戰", "type": "冰", "category": "攻擊", "frequency": "每天1次", "damage": "5d12", "effect": "命中時，你的速度會減少1，持續10分鐘. 這個效果不能疊加。" },
+  { "name": "冰凍拳", "range": "近戰", "type": "冰", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "命中後，如果在命中檢定中得到17或更高，目標將被冰凍。" },
+  { "name": "冰礫", "range": "遠程(15英尺)", "type": "冰", "category": "攻擊", "frequency": "隨時", "damage": "2d6", "effect": "冰礫具有優先級。" },
+  { "name": "冰柱墜擊", "range": "遠程(15英尺)", "type": "冰", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "命中後，如果在命中檢定中得到14或更高，目標將被定身。" },
+  { "name": "冰錐", "range": "遠程(10英尺)", "type": "冰", "category": "攻擊", "frequency": "隨時", "damage": "1d4", "effect": "冰錐在命中檢定時減少2點.冰錐是一個散射攻擊.最多5次攻擊。" },
+  { "name": "冰之微風", "range": "遠程（20尺）", "type": "冰", "category": "特攻", "frequency": "隨時", "damage": "2d6", "effect": "--" },
+  { "name": "冰凍之風", "range": "遠程(10英尺)", "type": "冰", "category": "特攻", "frequency": "隨時", "damage": "2d8", "effect": "命中時，目標的速度減少1，持續10分鐘. 此效果不能疊加。" },
+  { "name": "堅不可摧的姿態", "range": "遠程(40英尺)", "type": "一般", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "堅不可摧的姿態作為一種反應使用.如果被攻擊，忽略傷害和任何攻擊效果. 只要在接下來的三回合內不移動或進行其他攻擊，您將免疫來自攻擊的任何傷害，不會受到影響，並且不會受到任何招式效果的傷害. 如果被移動，堅不可摧的姿態效果結束。" },
+  { "name": "燒淨", "range": "遠程(10英尺)", "type": "火", "category": "特攻", "frequency": "隨時", "damage": "1d10", "effect": "命中時，如果目標持有果實，你摧毁它。" },
+  { "name": "群魔亂舞", "range": "遠程(30英尺)", "type": "幽靈", "category": "特攻", "frequency": "每天1次", "damage": "3d8", "effect": "如果目標受到影響，群魔亂舞造成3d12點傷害. 命中時，如果你在命中檢定中得到16或更高，目標將被灼傷。" },
+  { "name": "烈火深淵", "range": "遠程(40英尺)", "type": "火", "category": "特攻", "frequency": "每天1次", "damage": "5d12", "effect": "烈火深淵在命中檢定中減少5點.命中時，目標將被灼傷。" },
+  { "name": "火Ｚ超強極限爆焰彈", "range": "遠程（60尺，20尺爆炸）", "type": "火", "category": "(變量)", "frequency": "每天1次", "damage": "8d12", "effect": "--" },
+  { "name": "糾纏不休", "range": "遠程（20尺）", "type": "蟲", "category": "特攻", "frequency": "隨時", "damage": "1d4", "effect": "命中時，目標將被束縛在原地1d4回合. 目標被束縛的每個回合，在它的回合上會受到1d4點傷害。" },
+  { "name": "紮根", "range": "自身", "type": "草", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "在自己身上塗上一層根外套. 這件外套具有以下能力：在你的回合開始時，恢復1d12點HP.你不能移動. 這件外套持續2分鐘。" },
+  { "name": "號令", "range": "遠程(15英尺)", "type": "超能者", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "被選中的友方如果本回合還沒有行動，可以立即行動。" },
+  { "name": "等離子浴", "range": "範圍", "type": "電", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "你創造一個直徑為60英尺的離子領域圈. 在離子領域內，所有一般屬性攻擊變為電屬性攻擊. 這個領域在2分鐘後消失。" },
+  { "name": "鐵頭", "range": "近戰", "type": "鋼", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "命中後，如果在命中檢定中得到14或更高，目標將被定身。" },
+  { "name": "鐵尾", "range": "近戰", "type": "鋼", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "鐵尾在命中檢定中減少2點.命中時，目標的防禦減少1點，持續10分鐘. 這個效果不能疊加。" },
+  { "name": "緊咬不放", "range": "近戰", "type": "惡", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "擊中時，目標被束縛在你身邊1d6回合。" },
+  { "name": "噴射拳", "range": "近戰", "type": "水", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "噴射拳具有優先級。" },
+  { "name": "制裁光礫", "range": "遠程(50英尺，10英尺爆炸)", "type": "一般", "category": "特攻", "frequency": "每天3次", "damage": "5d20", "effect": "審判的類型在使用時選擇。" },
+  { "name": "飛踢", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "每天3次", "damage": "3d10", "effect": "飛踢在命中檢定時減少2點.如果未命中，失去等於最大HP一半的HP。" },
+  { "name": "叢林治療", "range": "遠程（20英尺爆發）", "type": "草", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "你和範圍內的任何盟友每人恢復等於最大HP的1/3，並解除任何痛苦。" },
+  { "name": "空手劈", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "隨時", "damage": "2d6", "effect": "命中時，如果在命中檢定中得到18或更高，空手劈是暴擊。" },
+  { "name": "空手劈打", "range": "近戰", "type": "格鬥", "category": "攻擊", "frequency": "隨時", "damage": "2d6", "effect": "--" },
+  { "name": "折彎湯匙", "range": "遠程(10英尺)", "type": "超能者", "category": "效果", "frequency": "隨時", "damage": "--", "effect": "命中時，目標在下一回合的命中檢定-1. 此效果不可疊加。" },
+  { "name": "王者之盾", "range": "自身", "type": "鋼", "category": "效果", "frequency": "每天1次", "damage": "--", "effect": "王者盾牌作為反應使用.如果受到近戰攻擊，使用王者盾牌來忽略傷害 and 攻擊效果，攻擊者的攻擊減少4點，持續10分鐘. 此效果不能疊加。" },
+  { "name": "王者打擊", "range": "遠程(30英尺光束)", "type": "(變量)", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "王者打擊是你的騎士劍調諧的類型.選擇一項：-王者打擊造成4d12傷害.-你和所有在100英尺內的盟友在一回合內獲得+2攻擊、防禦、特攻、特防或速度加值. 這不能疊加.-王者打擊的範圍是60英尺，10英尺波浪。" },
+  { "name": "僕刀", "range": "近戰", "type": "惡", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "防禦低於15的目標不會被錯過。" },
+  { "name": "騎士打擊", "range": "近戰", "type": "(變量)", "category": "攻擊", "frequency": "隨時", "damage": "2d6", "effect": "騎士打擊是你的騎士劍所調諧的類型.每次使用騎士打擊時選擇一個：命中時，目標在一輪內攻擊、防禦、特攻、特防或速度減少2點. 無法疊加.命中時，攻擊、防禦、特攻、特防或速度增加2點，持續一輪. 你在一輪內與相關屬性有關的技能檢定減少1點（總體上不會對技能產生影響）. 無法疊加.騎士劍造成2d8傷害.騎士劍是遠程武器（射程15英尺光束）。" },
+  { "name": "拍落", "range": "近戰", "type": "惡", "category": "攻擊", "frequency": "每天3次", "damage": "3d8", "effect": "命中時，目標丟棄任何持有的物品或武器。" },
+  { "name": "大地神力", "range": "遠程(40英尺)", "type": "地面", "category": "攻擊", "frequency": "每天3次", "damage": "5d12", "effect": "--" },
+  { "name": "語言", "range": "自身", "type": "一般", "category": "效果", "frequency": "", "damage": "--", "effect": "語言佔據一個招式槽，但在戰鬥中不是攻擊或招式. 語言可以學習多次. 獲得語言時，選擇一種人類語言. 你能夠用所選語言說出基本句子. 如果多個語言實例選擇相同的人類語言，你可以以任何複雜度水平說出該語言。" },
+  { "name": "磨礪", "range": "遠程(30英尺)", "type": "一般", "category": "效果", "frequency": "每天3次", "damage": "--", "effect": "擊中時，你對同一目標的下一次攻擊將是暴擊.你仍然需要進行命中檢定。" },
+  { "name": "洩憤", "range": "近戰", "type": "惡", "category": "攻擊", "frequency": "每天1次", "damage": "3d12", "effect": "如果你的屬性在這一回合被目標降低，傷害將改為6d12。" },
+  { "name": "掃墓", "range": "近戰", "type": "幽靈", "category": "攻擊", "frequency": "每天1次", "damage": "1d12", "effect": "掃墓每有一個在這次遭遇中被擊倒的盟友，傷害就增加+1d12（最多+7d12）。" }
+];
+
+// --- 修整日規則資料 ---
+const downtimeRules = [
+    {
+        title: "🥚 培育系統",
+        content: `
+            <ul>
+                <li><strong>費用:</strong> 1 DD (判定) / 1 DD (孵化進度+1)</li>
+                <li><strong>基礎機率:</strong> 15% (若父母忠誠3+ 則30%，忠誠4+ 則50%)</li>
+                <li><strong>孵化需求:</strong> 進度條滿 6 點即可孵化。</li>
+                <li><strong>遺傳規則:</strong> (父方+母方)/2，單項上限10。可能有 1D6 的潛力爆發(+1)。</li>
+            </ul>
+        `
+    },
+    {
+        title: "❤️ 與寶可夢互動",
+        content: `
+            <ul>
+                <li><strong>費用:</strong> 1 DD (技能判定: 寶可夢互動)</li>
+                <li><strong>結果:</strong> 失敗0點，成功1點，大成功2點羈絆值。</li>
+                <li><strong>忠誠度階級:</strong>
+                    <br>Lv1 不信任 (5點升級)
+                    <br>Lv2 服從 (10點升級)
+                    <br>Lv3 夥伴 (20點+5章節)
+                    <br>Lv4 親密 (全屬性+1 Buff)
+                </li>
+            </ul>
+        `
+    },
+    {
+        title: "🌿 尋找樹果",
+        content: `
+            <ul>
+                <li><strong>費用:</strong> 1 DD (技能判定: 自然)</li>
+                <li><strong>收穫表:</strong>
+                    <br>[0-9] 1d4 顆 T1
+                    <br>[10-14] 1d4+2 顆 T1
+                    <br>[15-19] 1d6+2 顆 T1 + 1 顆 T2
+                    <br>[20-24] T1/T2 豐收 + 1 顆 T3
+                    <br>[25+] 奇蹟豐收 (極低機率 T4)
+                </li>
+            </ul>
+        `
+    },
+    {
+        title: "🧪 製作藥劑",
+        content: `
+            <ul>
+                <li><strong>費用:</strong> 1 DD 可製作兩次 (判定: 醫學/專注)</li>
+                <li>T1 基礎 (DC 10)</li>
+                <li>T2 進階 (DC 13)</li>
+                <li>T3 高階 (DC 16)</li>
+                <li>T4 傳說 (DC 20)</li>
+            </ul>
+        `
+    },
+    {
+        title: "⚔️ 招式 & 特性鍛鍊",
+        content: `
+            <ul>
+                <li><strong>費用:</strong> 1 DD (判定: 訓練師+寶可夢)</li>
+                <li><strong>熟練度需求:</strong>
+                    <br>D6/變化: 3點
+                    <br>D8: 6點
+                    <br>D10/D12: 10點
+                    <br>奧義/特性: 15-20點
+                </li>
+            </ul>
+        `
+    }
+];
+
+/* =========================================
+   2. 邏輯控制區 (Logic)
+   ========================================= */
+
+document.addEventListener('DOMContentLoaded', () => {
+    initMoves();
+    initDowntime();
+    initBerries();
+    calcCatch(); // 初始化計算器
+});
+
+// --- 導航切換邏輯 ---
+function switchView(viewId) {
+    document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+    document.getElementById(viewId).classList.add('active');
+    document.querySelectorAll('.submenu-item').forEach(item => item.classList.remove('current'));
+}
+
+function toggleMenu(element) {
+    element.classList.toggle('active');
+    const submenu = element.nextElementSibling;
+    if (submenu) {
+        if (submenu.style.maxHeight) {
+            submenu.style.maxHeight = null;
+        } else {
+            submenu.style.maxHeight = submenu.scrollHeight + "px";
+        }
+    }
+}
+
+// --- 資安防護函式 ---
+function escapeHTML(text) {
+    if (!text) return text;
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// --- 1. 招式查詢器邏輯 ---
+function initMoves() {
+    const container = document.getElementById('movesResults');
+    const typeFilter = document.getElementById('typeFilter');
+    
+    // 填充屬性選單
+    const uniqueTypes = new Set();
+    movesData.forEach(m => { 
+        if(m.type) uniqueTypes.add(m.type.split('/')[0].replace(/[()]/g, '').trim()); 
+    });
+    Array.from(uniqueTypes).sort().forEach(t => {
+        const op = document.createElement('option'); 
+        op.value = t; 
+        op.textContent = t;
+        typeFilter.appendChild(op);
+    });
+
+    // 渲染函式
+    window.renderMoves = (list) => {
+        container.innerHTML = '';
+        document.getElementById('resultsCount').textContent = `找到 ${list.length} 個招式`;
+        
+        if(list.length === 0) {
+            container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#888;">沒有符合的結果</div>';
+            return;
+        }
+
+        list.forEach(m => {
+            const cleanType = m.type.split('/')[0].replace(/[()]/g, '').trim();
+            const card = document.createElement('div');
+            card.className = `move-card card-type-${cleanType}`;
+            card.innerHTML = `
+                <div class="move-header">
+                    <span class="move-name"><strong>${escapeHTML(m.name)}</strong></span>
+                    <span class="move-badge type-${cleanType}">${escapeHTML(m.type)}</span>
+                </div>
+                <div class="move-stats">
+                    <div><span style="font-weight:bold">分類:</span> ${escapeHTML(m.category)}</div>
+                    <div><span style="font-weight:bold">傷害:</span> ${escapeHTML(m.damage)}</div>
+                    <div><span style="font-weight:bold">頻率:</span> ${escapeHTML(m.frequency)}</div>
+                    <div><span style="font-weight:bold">範圍:</span> ${escapeHTML(m.range)}</div>
+                </div>
+                <div class="effect-text">${escapeHTML(m.effect)}</div>
+            `;
+            container.appendChild(card);
+        });
+    };
+
+    // 搜尋事件
+    const doSearch = () => {
+        const term = document.getElementById('searchInput').value.toLowerCase();
+        const type = document.getElementById('typeFilter').value;
+        const cat = document.getElementById('catFilter').value;
+        const dice = document.getElementById('diceFilter').value;
+
+        const filtered = movesData.filter(m => {
+            const matchName = m.name.toLowerCase().includes(term);
+            const matchType = type === 'all' || m.type.includes(type);
+            const matchCat = cat === 'all' || m.category === cat;
+            const matchDice = dice === 'all' || (m.damage && m.damage.toLowerCase().includes(dice));
+            return matchName && matchType && matchCat && matchDice;
+        });
+        renderMoves(filtered);
+    };
+
+    document.getElementById('searchBtn').addEventListener('click', doSearch);
+    document.getElementById('searchInput').addEventListener('keypress', (e) => { if(e.key==='Enter') doSearch(); });
+    ['typeFilter','catFilter','diceFilter'].forEach(id => document.getElementById(id).addEventListener('change', doSearch));
+
+    // 初始渲染
+    renderMoves(movesData);
+}
+
+// --- 2. 修整日規則渲染 ---
+function initDowntime() {
+    const container = document.getElementById('downtimeContainer');
+    downtimeRules.forEach(rule => {
+        const card = document.createElement('div');
+        card.className = 'rule-card';
+        card.innerHTML = `
+            <div class="rule-title">${rule.title}</div>
+            <div class="rule-content">${rule.content}</div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+// --- 3. 樹果圖鑑渲染 ---
+function initBerries() {
+    const container = document.getElementById('berryContainer');
+    berryData.forEach(b => {
+        const card = document.createElement('div');
+        card.className = 'berry-card';
+        card.innerHTML = `
+            <div class="berry-header">
+                <span class="berry-name"><strong>${escapeHTML(b.name)}</strong></span>
+                <span class="berry-tier tier-${b.tier}">${b.tier}</span>
+            </div>
+            <div class="berry-info">
+                <div class="berry-row"><div class="berry-label">顏色</div> <div>${escapeHTML(b.color)}</div></div>
+                <div class="berry-row"><div class="berry-label">味道</div> <div>${escapeHTML(b.flavor)}</div></div>
+                <div class="berry-row"><div class="berry-label">口感</div> <div>${escapeHTML(b.texture)}</div></div>
+                <div class="berry-row"><div class="berry-label">氣味</div> <div>${escapeHTML(b.scent)}</div></div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+// --- 4. 收服計算器邏輯 (依據新JSON) ---
+function calcCatch() {
+    // 取得條件
+    const scopeFull = document.getElementById('scope_full').checked;
+    const scopeType = document.getElementById('scope_type').checked;
+    const scopeGen = document.getElementById('scope_gen').checked;
+    
+    const customGender = document.getElementById('custom_gender').checked;
+    const customShiny = document.getElementById('custom_shiny').checked;
+    const customNature = document.getElementById('custom_nature').checked;
+    
+    const unlockPseudo = document.getElementById('unlock_pseudo').checked;
+    const unlockMythical = document.getElementById('unlock_mythical').checked;
+    const unlockUB = document.getElementById('unlock_ub').checked;
+    
+    // 取得球數
+    const numPoke = parseInt(document.getElementById('ball_poke').value) || 0;
+    const numGreat = parseInt(document.getElementById('ball_great').value) || 0;
+    const numUltra = parseInt(document.getElementById('ball_ultra').value) || 0;
+    const numMaster = parseInt(document.getElementById('ball_master').value) || 0;
+    
+    // 顯示/隱藏選項
+    document.getElementById('genOption').style.display = scopeType ? 'block' : 'none';
+    document.getElementById('natureSelector').style.display = customNature ? 'block' : 'none';
+    
+    // 計算基礎成本
+    let costs = {
+        scope: scopeFull ? 3 : (scopeType ? 4 : 0),
+        gen: (scopeType && scopeGen) ? 2 : 0,
+        gender: customGender ? 1 : 0,
+        shiny: customShiny ? 1 : 0,
+        nature: customNature ? 1 : 0,
+        pseudo: unlockPseudo ? 2 : 0,
+        mythical: unlockMythical ? 3 : 0,
+        ub: unlockUB ? 3 : 0
+    };
+    
+    let baseCost = Object.values(costs).reduce((a, b) => a + b, 0);
+    
+    // 條件明細
+    let conditionLines = [];
+    if (scopeFull) conditionLines.push(`全圖鑑抽取: +3 DD`);
+    if (scopeType) conditionLines.push(`指定屬性區域: +4 DD`);
+    if (scopeType && scopeGen) conditionLines.push(`指定世代: +2 DD`);
+    if (customGender) conditionLines.push(`指定性別: +1 DD`);
+    if (customShiny) conditionLines.push(`異色: +1 DD`);
+    if (customNature) conditionLines.push(`指定個性: +1 DD`);
+    if (unlockPseudo) conditionLines.push(`解鎖大器晚成: +2 DD`);
+    if (unlockMythical) conditionLines.push(`解鎖幻之寶可夢: +3 DD`);
+    if (unlockUB) conditionLines.push(`解鎖究極異獸: +3 DD`);
+    
+    if (conditionLines.length === 0) conditionLines.push('尚未選擇任何條件');
+    conditionLines.push(`<strong>小計: ${baseCost} DD</strong>`);
+    
+    // 計算折扣 (依據新規則)
+    let remainingCosts = { ...costs };
+    let discounts = { poke: 0, great: 0, ultra: 0, master: 0 };
+    
+    // 寶貝球: 全圖鑑/屬性區/世代 各-1
+    for (let i = 0; i < numPoke; i++) {
+        if (remainingCosts.scope > 0) { remainingCosts.scope--; discounts.poke++; }
+        else if (remainingCosts.gen > 0) { remainingCosts.gen--; discounts.poke++; }
+    }
+    
+    // 超級球: 全圖鑑-2, 大器晚成-1
+    for (let i = 0; i < numGreat; i++) {
+        let deducted = 0;
+        // 全圖鑑 -2
+        let fullDeduct = Math.min(2, remainingCosts.scope);
+        remainingCosts.scope -= fullDeduct;
+        deducted += fullDeduct;
+        // 大器晚成 -1
+        let pseudoDeduct = Math.min(1, remainingCosts.pseudo);
+        remainingCosts.pseudo -= pseudoDeduct;
+        deducted += pseudoDeduct;
+        discounts.great += deducted;
+    }
+    
+    // 高級球: 全圖鑑-3, 大器晚成-2, 幻/UB-1
+    for (let i = 0; i < numUltra; i++) {
+        let deducted = 0;
+        // 全圖鑑 -3
+        let fullDeduct = Math.min(3, remainingCosts.scope);
+        remainingCosts.scope -= fullDeduct;
+        deducted += fullDeduct;
+        // 大器晚成 -2
+        let pseudoDeduct = Math.min(2, remainingCosts.pseudo);
+        remainingCosts.pseudo -= pseudoDeduct;
+        deducted += pseudoDeduct;
+        // 幻之 -1
+        let mythDeduct = Math.min(1, remainingCosts.mythical);
+        remainingCosts.mythical -= mythDeduct;
+        deducted += mythDeduct;
+        // UB -1
+        let ubDeduct = Math.min(1, remainingCosts.ub);
+        remainingCosts.ub -= ubDeduct;
+        deducted += ubDeduct;
+        discounts.ultra += deducted;
+    }
+    
+    // 大師球: 幻之-2, UB-3
+    for (let i = 0; i < numMaster; i++) {
+        let deducted = 0;
+        // 幻之 -2
+        let mythDeduct = Math.min(2, remainingCosts.mythical);
+        remainingCosts.mythical -= mythDeduct;
+        deducted += mythDeduct;
+        // UB -3
+        let ubDeduct = Math.min(3, remainingCosts.ub);
+        remainingCosts.ub -= ubDeduct;
+        deducted += ubDeduct;
+        discounts.master += deducted;
+    }
+    
+    let totalDiscount = discounts.poke + discounts.great + discounts.ultra + discounts.master;
+    
+    // 折扣明細
+    let discountLines = [];
+    if (numPoke > 0) discountLines.push(`寶貝球 x${numPoke}: -${discounts.poke} DD`);
+    if (numGreat > 0) discountLines.push(`超級球 x${numGreat}: -${discounts.great} DD`);
+    if (numUltra > 0) discountLines.push(`高級球 x${numUltra}: -${discounts.ultra} DD`);
+    if (numMaster > 0) discountLines.push(`大師球 x${numMaster}: -${discounts.master} DD`);
+    
+    if (discountLines.length === 0) discountLines.push('未使用精靈球');
+    discountLines.push(`<strong style="color:#69f0ae;">小計: -${totalDiscount} DD</strong>`);
+    
+    // 最終成本
+    let finalCost = Math.max(0, baseCost - totalDiscount);
+    
+    // 更新 UI
+    document.getElementById('txt_conditions').innerHTML = conditionLines.join('<br>');
+    document.getElementById('txt_discounts').innerHTML = discountLines.join('<br>');
+    document.getElementById('txt_final').innerText = finalCost + " DD";
+    
+    // 摘要
+    const summaryDiv = document.getElementById('result_summary');
+    if (scopeFull || scopeType) {
+        summaryDiv.style.display = 'block';
+        let summaryItems = [];
+        if (customGender) summaryItems.push('性別: 指定');
+        if (customShiny) summaryItems.push('特殊: 異色');
+        if (customNature) {
+            const nature = document.getElementById('natureSelect').value || '未選擇';
+            summaryItems.push(`個性: ${nature}`);
+        }
+        summaryItems.push(`來源: ${scopeFull ? '全圖鑑' : '指定屬性區域'}${scopeGen ? ' + 指定世代' : ''}`);
+        
+        let rarityItems = [];
+        if (unlockPseudo) rarityItems.push('大器晚成');
+        if (unlockMythical) rarityItems.push('幻之寶可夢');
+        if (unlockUB) rarityItems.push('究極異獸');
+        if (rarityItems.length > 0) summaryItems.push(`解鎖稀有度: ${rarityItems.join(', ')}`);
+        
+        summaryItems.push(`形態: 初始形態 (有進化則以初始形態捕獲)`);
+        
+        document.getElementById('txt_summary').innerHTML = summaryItems.join('<br>');
+    } else {
+        summaryDiv.style.display = 'none';
+    }
+}
+</script>
+
+</body>
+</html>
