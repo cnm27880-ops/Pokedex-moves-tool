@@ -923,18 +923,10 @@ const shopDB = [
     {cat:"服飾", name:"科技護目鏡", price:800, desc:"+2 感知技能檢定。"}
 ];
 
-// 商店設定：每類別出現數量
-const shopConfig = {
-    "藥品": 3,
-    "球類": 2,
-    "裝備": 2,
-    "生活": 2,
-    "服飾": 1
-};
-
-// 打折商品數量
-const DISCOUNT_COUNT = 10;
-const DISCOUNT_RATE = 0.8; // 8折
+// 商店設定
+const SHOP_ITEM_COUNT = 10;  // 每週抽取商品數量
+const DISCOUNT_COUNT = 10;   // 打折商品數量（全部都打折）
+const DISCOUNT_RATE = 0.8;   // 8折
 const movesData = [
   // 招式資料(1-400)
   { "name": "（元素攻擊）", "range": "變化", "type": "(變量)", "category": "變化", "frequency": "變化", "damage": "--", "effect": "機械洛托姆在使用有線特徵時，將具有與其所寄居的機器相關的攻擊。 當寄居冰箱或冰櫃時，可能會有冰屬性攻擊，或者當寄居烤箱或微波爐時，可能會有火屬性攻擊。" },
