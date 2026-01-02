@@ -26,14 +26,21 @@
         }
 
         body {
-            margin: 0;
-            background-color: var(--bg-color);
-            color: #333;
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
+    margin: 0;
+    background-color: var(--bg-color);
+    color: #333;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 電腦版：固定高度 */
+@media (min-width: 769px) {
+    body {
+        height: 100vh;
+        overflow: hidden;
+    }
+}
 
         /* --- Header --- */
         header {
@@ -319,11 +326,124 @@
         .result-summary { margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px; }
         .result-summary-title { font-weight: bold; margin-bottom: 10px; color: #69f0ae; }
 
-        @media (max-width: 768px) {
-            .main-container { flex-direction: column; overflow-y: auto; }
-            .sidebar { width: 100%; height: auto; max-height: 200px; }
-            .content-area { overflow: visible; }
-        }
+        /* 手機版：整頁可滾動 */
+@media (max-width: 768px) {
+    body {
+        height: auto;
+        overflow: visible;
+    }
+    .main-container { 
+        flex-direction: column; 
+        overflow: visible;
+    }
+    .sidebar { 
+        width: 100%; 
+        height: auto; 
+        max-height: none;
+        overflow: visible;
+    }
+    .content-area { 
+        overflow: visible;
+        padding-bottom: 80px;
+    }
+}
+/* === 商店頁面樣式 === */
+.shop-controls {
+    text-align: center;
+    margin-bottom: 25px;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: var(--radius);
+}
+.shop-controls p {
+    color: white;
+    margin: 0 0 15px 0;
+    font-size: 0.95rem;
+}
+.btn-refresh {
+    background-color: #fff;
+    color: #764ba2;
+    border: none;
+    padding: 12px 30px;
+    font-size: 16px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    transition: all 0.3s;
+}
+.btn-refresh:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+.btn-refresh:active {
+    transform: translateY(0);
+}
+
+.shop-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+}
+.shop-table th {
+    background-color: var(--primary-dark);
+    color: white;
+    padding: 15px;
+    text-align: left;
+    font-weight: bold;
+}
+.shop-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    vertical-align: top;
+}
+.shop-table tr:hover {
+    background-color: #f8f9fa;
+}
+.shop-price {
+    color: #d35400;
+    font-weight: bold;
+    white-space: nowrap;
+}
+.shop-price.discounted {
+    color: #e74c3c;
+}
+.shop-price .original {
+    text-decoration: line-through;
+    color: #999;
+    font-size: 0.85em;
+    margin-right: 5px;
+}
+.shop-desc {
+    color: #555;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+.shop-tag {
+    display: inline-block;
+    font-size: 0.8em;
+    padding: 4px 10px;
+    border-radius: 20px;
+    color: white;
+    font-weight: bold;
+}
+.tag-med { background-color: #e74c3c; }
+.tag-ball { background-color: #3498db; }
+.tag-gear { background-color: #9b59b6; }
+.tag-life { background-color: #f39c12; color: #333; }
+.tag-cloth { background-color: #1abc9c; }
+.discount-badge {
+    display: inline-block;
+    background: #e74c3c;
+    color: white;
+    font-size: 0.75em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 8px;
+}
     </style>
 </head>
 <body>
@@ -361,6 +481,7 @@
             <div class="submenu">
                 <a class="submenu-item" onclick="switchView('view-berries')">全部樹果 (圖鑑)</a>
                 <a class="submenu-item" onclick="switchView('view-calculator')">收服計算器</a>
+                <a class="submenu-item" onclick="switchView('view-shop')">🛒 每週商店</a>
                 <a class="submenu-item" onclick="switchView('view-keywords')">全體招式關鍵字</a>
             </div>
         </div>
@@ -578,7 +699,29 @@
                 </div>
             </div>
         </div>
-
+<!-- 視圖: 每週商店 -->
+<div id="view-shop" class="view-section">
+    <div class="page-title">🛒 每週商店</div>
+    
+    <div class="shop-controls">
+        <p>每週隨機刷新商品，打折商品享有 <strong>8折優惠</strong>！</p>
+        <button class="btn-refresh" onclick="refreshShop()">🎲 刷新本週商品</button>
+    </div>
+    
+    <table class="shop-table">
+        <thead>
+            <tr>
+                <th style="width:10%">類別</th>
+                <th style="width:22%">商品名稱</th>
+                <th style="width:12%">價格</th>
+                <th style="width:56%">效果說明</th>
+            </tr>
+        </thead>
+        <tbody id="shopBody">
+            <!-- 商品由 JS 動態生成 -->
+        </tbody>
+    </table>
+</div>
         <!-- 視圖 5: 全體招式關鍵字 -->
         <div id="view-keywords" class="view-section">
             <div class="page-title">全體招式關鍵字</div>
@@ -618,7 +761,180 @@ const berryData = [
     { tier: "T4", name: "奇秘果", color: "翠綠色 (細長型)", flavor: "尖銳乾澀", texture: "像嚼金屬或玻璃一樣脆。", scent: "強烈鐵鏽味與乾燥泥土味。" },
     { tier: "T4", name: "釋陀果", color: "鮮紅色 (像燈籠)", flavor: "極甜至苦", texture: "外層糖衣脆，內層流動苦液。", scent: "濃縮咖啡與蜂蜜醇厚香氣。" }
 ];
+// === 商店資料庫 ===
+const shopDB = [
+    // --- 藥品 ---
+    {cat:"藥品", name:"傷藥", price:25, desc:"為寶可夢恢復10點生命值。"},
+    {cat:"藥品", name:"好傷藥", price:250, desc:"為一個寶可夢恢復20點生命值。"},
+    {cat:"藥品", name:"厲害傷藥", price:550, desc:"為一隻寶可夢恢復30點生命值。"},
+    {cat:"藥品", name:"全滿藥", price:850, desc:"將寶可夢治癒到它們的最大生命值。"},
+    {cat:"藥品", name:"全複藥", price:1200, desc:"將寶可夢恢復到最大生命值，並治癒它們的任何病症。"},
+    {cat:"藥品", name:"藥水", price:100, desc:"治療一個人類10點生命值。"},
+    {cat:"藥品", name:"超級蘇打", price:300, desc:"治療一個人類20點生命值。"},
+    {cat:"藥品", name:"超級果汁牛奶", price:550, desc:"為人類恢復30點生命值。"},
+    {cat:"藥品", name:"解毒藥", price:120, desc:"治癒寶可夢或人類的中毒狀態。"},
+    {cat:"藥品", name:"解麻藥", price:120, desc:"治癒寶可夢或人類的麻痺狀態。"},
+    {cat:"藥品", name:"覺醒", price:120, desc:"治癒寶可夢或人類不自然睡眠狀態。"},
+    {cat:"藥品", name:"灼傷藥", price:120, desc:"治癒寶可夢或人類的灼傷狀態。"},
+    {cat:"藥品", name:"解凍藥", price:120, desc:"治癒寶可夢或人類的冰凍狀態。"},
+    {cat:"藥品", name:"萬靈藥", price:520, desc:"治癒寶可夢或人類的所有病症。"},
+    {cat:"藥品", name:"PP單項小補劑", price:480, desc:"恢復單項技能 PP，1次/天。"},
+    {cat:"藥品", name:"聖水", price:1280, desc:"恢復寶可夢每天1次或3次的招式次數。"},
+    {cat:"藥品", name:"活力碎片", price:1350, desc:"將昏迷的寶可夢恢復到最大生命值的一半。"},
+    {cat:"藥品", name:"活力塊", price:1950, desc:"將一個昏迷的寶可夢恢復到最大生命值。"},
+    {cat:"藥品", name:"除蟲噴霧", price:150, desc:"1小時內野生寶可夢厭惡氣味。"},
+    {cat:"藥品", name:"白銀噴霧", price:400, desc:"3小時內野生寶可夢厭惡氣味。"},
+    {cat:"藥品", name:"萬用粉", price:480, desc:"移除任何病症。"},
+    {cat:"藥品", name:"元氣粉", price:125, desc:"恢復15點生命值（寶可夢）。"},
+    {cat:"藥品", name:"元氣根", price:400, desc:"恢復30點生命值（寶可夢）。"},
+    {cat:"藥品", name:"復活草", price:1000, desc:"將昏迷的寶可夢恢復到最大生命值的一半。"},
+    {cat:"藥品", name:"力量強化", price:100, desc:"增加寶可夢的攻擊力1點，持續2分鐘。"},
+    {cat:"藥品", name:"X防禦", price:100, desc:"增加寶可夢的防禦力1點，持續2分鐘。"},
+    {cat:"藥品", name:"X特攻", price:100, desc:"增加寶可夢的特攻1點，持續2分鐘。"},
+    {cat:"藥品", name:"X特防", price:100, desc:"增加寶可夢的特防1點，持續2分鐘。"},
+    {cat:"藥品", name:"X速度", price:100, desc:"增加寶可夢的速度1點，持續2分鐘。"},
+    {cat:"藥品", name:"命中強化", price:100, desc:"增加寶可夢的命中檢定1點，持續1分鐘。"},
+    // --- 球類 ---
+    {cat:"球類", name:"基礎球", price:100, desc:"使你的捕捉投擲加5。"},
+    {cat:"球類", name:"精靈球", price:200, desc:"基礎的捕捉球。"},
+    {cat:"球類", name:"超級球", price:600, desc:"對你的捕捉投擲加0。"},
+    {cat:"球類", name:"高級球", price:1000, desc:"從你的捕捉投擲中減去5點。"},
+    {cat:"球類", name:"公園球", price:550, desc:"對馴化的野生寶可夢捕捉值減少20點。"},
+    {cat:"球類", name:"狩獵球", price:550, desc:"對馴化的野生寶可夢捕捉值減少20點。"},
+    {cat:"球類", name:"競賽球", price:550, desc:"對馴化的野生寶可夢捕捉值減少20點。"},
+    {cat:"球類", name:"貴重球", price:1500, desc:"捕捉時減少5點。容易結為好友。"},
+    {cat:"球類", name:"豪華球", price:1500, desc:"捕捉時減少5點。容易結為好友。"},
+    {cat:"球類", name:"紀念球", price:1500, desc:"捕捉時減少5點。容易結為好友。"},
+    {cat:"球類", name:"潛水球", price:1250, desc:"如果寶可夢在水中，從捕捉骰子中減去12點。"},
+    {cat:"球類", name:"黑暗球", price:1150, desc:"如果是夜晚/無陽光，從捕捉骰子中減去7點。"},
+    {cat:"球類", name:"速度球", price:1250, desc:"對先行動的寶可夢，從捕捉骰子中減去8點。"},
+    {cat:"球類", name:"誘餌球", price:1250, desc:"釣魚/引誘出的寶可夢，捕捉時減少10點。"},
+    {cat:"球類", name:"友友球", price:1000, desc:"捕捉投擲時+0。更容易結為好友。"},
+    {cat:"球類", name:"治癒球", price:1000, desc:"捕捉後恢復20點生命值。"},
+    {cat:"球類", name:"沈重球", price:1250, desc:"對重量級寶可夢，捕捉骰子減去15點。"},
+    {cat:"球類", name:"等級球", price:1250, desc:"對可進化但未進化的寶可夢有效。"},
+    {cat:"球類", name:"甜蜜球", price:1250, desc:"如果目標是異性，捕捉投擲時減少10點。"},
+    {cat:"球類", name:"月亮球", price:1250, desc:"對進化石進化的寶可夢有效。"},
+    {cat:"球類", name:"巢穴球", price:1250, desc:"對弱小的寶可夢有效。"},
+    {cat:"球類", name:"捕網球", price:1550, desc:"對昆蟲或水屬性寶可夢有效，減少15點。"},
+    {cat:"球類", name:"先機球", price:1550, desc:"戰鬥第一回合投擲，捕捉骰子減去20點。"},
+    {cat:"球類", name:"重複球", price:1250, desc:"若已登錄圖鑑，捕捉骰子減去10點。"},
+    {cat:"球類", name:"計時球", price:1550, desc:"遭遇時間越長越容易捕捉。"},
+    {cat:"球類", name:"夢境球", price:1250, desc:"對睡眠中的寶可夢有效。"},
+    {cat:"球類", name:"沙漠球", price:250, desc:"在沙漠環境中，捕捉檢定減少12點。"},
+    {cat:"球類", name:"雨林球", price:250, desc:"在雨林環境中，捕捉檢定減少12點。"},
+    {cat:"球類", name:"洞穴球", price:250, desc:"在洞穴環境中，捕捉檢定減少12點。"},
+    {cat:"球類", name:"北極球", price:250, desc:"在北極環境中，捕捉檢定減少12點。"},
+    // --- 裝備 ---
+    {cat:"裝備", name:"氣球", price:1350, desc:"免疫地面屬性攻擊，受傷後破裂。"},
+    {cat:"裝備", name:"吸光球", price:650, desc:"受水屬性攻擊破裂，特攻+2。"},
+    {cat:"裝備", name:"充電電池", price:650, desc:"受電屬性攻擊破裂，攻擊+2。"},
+    {cat:"裝備", name:"腎上腺球", price:2550, desc:"被降能力時速度+1。"},
+    {cat:"裝備", name:"突擊背心", price:2550, desc:"特防+1，但不能使用變化招式。"},
+    {cat:"裝備", name:"大根莖", price:2550, desc:"吸取類招式回復量增加。"},
+    {cat:"裝備", name:"緊綁束帶", price:2550, desc:"束縛類招式傷害增加。"},
+    {cat:"裝備", name:"黑色污泥", price:1250, desc:"毒系回復HP，非毒系扣HP。"},
+    {cat:"裝備", name:"講究頭帶", price:2550, desc:"攻擊+2，只能用一招。"},
+    {cat:"裝備", name:"講究圍巾", price:2550, desc:"速度+2，只能用一招。"},
+    {cat:"裝備", name:"講究眼鏡", price:2550, desc:"特攻+2，只能用一招。"},
+    {cat:"裝備", name:"進化奇石", price:2550, desc:"未進化寶可夢雙防+1。"},
+    {cat:"裝備", name:"達人帶", price:2550, desc:"屬性剋制時傷害增加。"},
+    {cat:"裝備", name:"氣勢頭帶", price:1950, desc:"機率保留1點HP不死。"},
+    {cat:"裝備", name:"氣勢披帶", price:2550, desc:"滿血時不會被一擊必殺。"},
+    {cat:"裝備", name:"重型靴", price:2550, desc:"免疫釘子等場地傷害。"},
+    {cat:"裝備", name:"王者之戒", price:2550, desc:"攻擊有機率造成畏縮。"},
+    {cat:"裝備", name:"吃剩的東西", price:2550, desc:"每回合回復少量HP。"},
+    {cat:"裝備", name:"生命寶珠", price:2550, desc:"招式威力增強但扣血。"},
+    {cat:"裝備", name:"心靈香草", price:650, desc:"解除被封鎖招式或挑釁狀態。"},
+    {cat:"裝備", name:"力量頭帶", price:2550, desc:"首回合攻擊+2。"},
+    {cat:"裝備", name:"防護墊", price:2550, desc:"接觸攻擊不受反傷。"},
+    {cat:"裝備", name:"先製之爪", price:2550, desc:"有機率優先行動。"},
+    {cat:"裝備", name:"銳利之爪", price:2550, desc:"容易擊中要害。"},
+    {cat:"裝備", name:"凸凸頭盔", price:2550, desc:"受到接觸攻擊時對手受傷。"},
+    {cat:"裝備", name:"貝殼之鈴", price:2550, desc:"造成傷害時回復HP。"},
+    {cat:"裝備", name:"博識眼鏡", price:2550, desc:"首回合特攻+2。"},
+    {cat:"裝備", name:"ＨＰ增強劑", price:9800, desc:"永久增加4點ＨＰ。"},
+    {cat:"裝備", name:"攻擊增強劑", price:9800, desc:"永久增加1點攻擊力。"},
+    {cat:"裝備", name:"特殊招式學習器 (隨時)", price:4800, desc:"學習隨時頻率的招式。"},
+    {cat:"裝備", name:"火之石", price:9800, desc:"進化特定的寶可夢。"},
+    {cat:"裝備", name:"水之石", price:9800, desc:"進化特定的寶可夢。"},
+    {cat:"裝備", name:"雷之石", price:9800, desc:"進化特定的寶可夢。"},
+    {cat:"裝備", name:"葉之石", price:9800, desc:"進化特定的寶可夢。"},
+    {cat:"裝備", name:"月之石", price:9800, desc:"進化特定的寶可夢。"},
+    {cat:"裝備", name:"光之石", price:9800, desc:"進化特定的寶可夢。"},
+    {cat:"裝備", name:"暗之石", price:9800, desc:"進化特定的寶可夢。"},
+    {cat:"裝備", name:"覺醒之石", price:9800, desc:"進化特定的寶可夢。"},
+    // --- 生活 ---
+    {cat:"生活", name:"基礎工具包", price:150, desc:"含鐵鎚、螺絲起子、手鋸等基本維修工具。"},
+    {cat:"生活", name:"相機包", price:150, desc:"攝影師裝備，含鏡頭、電池、記憶卡。"},
+    {cat:"生活", name:"烹飪工具包", price:850, desc:"含便攜式電爐、鍋具、餐具。"},
+    {cat:"生活", name:"挖掘工具包", price:150, desc:"含鏟子、鶴嘴鋤、指南針、繩索。"},
+    {cat:"生活", name:"繪畫工具包", price:20, desc:"含素描本、各種筆具。"},
+    {cat:"生活", name:"工程師工具包", price:1050, desc:"含焊接台、精密工具、大量螺絲。"},
+    {cat:"生活", name:"釣魚工具包", price:750, desc:"含伸縮釣竿、魚鉤、魚餌、魚具盒。"},
+    {cat:"生活", name:"美容工具包", price:150, desc:"含修剪器、梳子、洗髮精，寶可夢美容用。"},
+    {cat:"生活", name:"醫療急救包", price:2150, desc:"含止痛藥、繃帶、手術工具，可穩定傷勢。"},
+    {cat:"生活", name:"精靈球匠工具包", price:1250, desc:"製作精靈球的專業設備。"},
+    {cat:"生活", name:"便攜化學工具箱", price:850, desc:"含燒杯、試管、燃燒爐等化學設備。"},
+    {cat:"生活", name:"縫紉工具包", price:200, desc:"含電子縫紉機、針線、布料。"},
+    {cat:"生活", name:"旅行者包", price:150, desc:"含帳篷、睡袋、小刀、手電筒。"},
+    {cat:"生活", name:"訓練師背包", price:80, desc:"新手基本包，含太陽能充、繃帶。"},
+    {cat:"生活", name:"孵化器", price:1350, desc:"保護並溫暖寶可夢蛋，促進孵化。"},
+    {cat:"生活", name:"折疊自行車", price:950, desc:"可折疊的3速自行車，方便攜帶。"},
+    {cat:"生活", name:"太陽能充電器", price:50, desc:"可為電子設備充電的展開式面板。"},
+    {cat:"生活", name:"手電筒", price:2, desc:"照明用具。"},
+    {cat:"生活", name:"睡袋", price:10, desc:"野外露營必備。"},
+    {cat:"生活", name:"帳篷 (2人)", price:50, desc:"標準雙人帳篷。"},
+    {cat:"生活", name:"繩索 (10m)", price:10, desc:"標準繩索。"},
+    {cat:"生活", name:"多功能工具", price:20, desc:"瑞士刀風格工具。"},
+    {cat:"生活", name:"打火機", price:2, desc:"生火用。"},
+    {cat:"生活", name:"智慧型手機", price:580, desc:"通訊、地圖、圖鑑功能。"},
+    {cat:"生活", name:"筆記型電腦", price:980, desc:"功能完整的電腦。"},
+    {cat:"生活", name:"任天堂Switch", price:375, desc:"娛樂系統，可與寶可夢一起玩。"},
+    {cat:"生活", name:"營火套裝", price:45, desc:"生火與簡易烹飪工具。"},
+    {cat:"生活", name:"咖哩營火套裝", price:80, desc:"製作伽勒爾咖哩的所有工具與食材。"},
+    {cat:"生活", name:"寶可夢盒鏈接", price:19800, desc:"遠端連接電腦存取寶可夢。"},
+    {cat:"生活", name:"車輛 (摩托車)", price:4980, desc:"快速移動的交通工具。"},
+    // --- 服飾 ---
+    {cat:"服飾", name:"服裝裝備", price:100, desc:"特定活動檢定+1，兩週後失效。"},
+    {cat:"服飾", name:"防暴裝備", price:500, desc:"減少受到招式的傷害5點。"},
+    {cat:"服飾", name:"鉚釘皮甲", price:1250, desc:"+1 防禦。"},
+    {cat:"服飾", name:"鎖子甲", price:3450, desc:"+2 防禦，移動受限。"},
+    {cat:"服飾", name:"全身鎧甲", price:9650, desc:"+3 防禦，移動大幅受限。"},
+    {cat:"服飾", name:"暴風雪服", price:1050, desc:"免疫冰雹天氣傷害，禦寒。"},
+    {cat:"服飾", name:"沙漠裝備", price:1050, desc:"免疫沙暴天氣傷害。"},
+    {cat:"服飾", name:"北極潛水服", price:775, desc:"抗寒潛水，水中移動不受限。"},
+    {cat:"服飾", name:"全視頭盔", price:975, desc:"黑暗或視線不良時感知檢定+4。"},
+    {cat:"服飾", name:"生態偽裝", price:675, desc:"特定地形潛行檢定+4。"},
+    {cat:"服飾", name:"尖底靴", price:95, desc:"在濕滑或泥濘地形不減速。"},
+    {cat:"服飾", name:"越野滑雪板", price:675, desc:"雪地移動速度增加。"},
+    {cat:"服飾", name:"鉤指手套", price:675, desc:"攀爬檢定+4。"},
+    {cat:"服飾", name:"冰背心", price:675, desc:"抵抗高溫環境，體質檢定+4。"},
+    {cat:"服飾", name:"噪音消除器", price:675, desc:"專注檢定+4。"},
+    {cat:"服飾", name:"扒手貓套裝", price:675, desc:"城市潛行檢定+4。"},
+    {cat:"服飾", name:"輪滑鞋", price:675, desc:"平地移動速度增加。"},
+    {cat:"服飾", name:"忍者足襪", price:800, desc:"+2 雜技技能檢定。"},
+    {cat:"服飾", name:"支撐袖套", price:800, desc:"+2 運動技能檢定。"},
+    {cat:"服飾", name:"多米諾面具", price:800, desc:"+2 虛張聲勢/欺騙技能檢定。"},
+    {cat:"服飾", name:"金字塔帽", price:800, desc:"+2 專注技能檢定。"},
+    {cat:"服飾", name:"棉襖", price:800, desc:"+2 體質技能檢定。"},
+    {cat:"服飾", name:"精緻領巾", price:800, desc:"+2 外交技能檢定。"},
+    {cat:"服飾", name:"露指手套", price:800, desc:"+2 工程/操作技能檢定。"},
+    {cat:"服飾", name:"科技護目鏡", price:800, desc:"+2 感知技能檢定。"}
+];
 
+// 商店設定：每類別出現數量
+const shopConfig = {
+    "藥品": 3,
+    "球類": 2,
+    "裝備": 2,
+    "生活": 2,
+    "服飾": 1
+};
+
+// 打折商品數量
+const DISCOUNT_COUNT = 10;
+const DISCOUNT_RATE = 0.8; // 8折
 const movesData = [
   // 招式資料(1-400)
   { "name": "（元素攻擊）", "range": "變化", "type": "(變量)", "category": "變化", "frequency": "變化", "damage": "--", "effect": "機械洛托姆在使用有線特徵時，將具有與其所寄居的機器相關的攻擊。 當寄居冰箱或冰櫃時，可能會有冰屬性攻擊，或者當寄居烤箱或微波爐時，可能會有火屬性攻擊。" },
@@ -1551,6 +1867,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initMoves();
     initDowntime();
     initBerries();
+    refreshShop();
     calcCatch(); // 初始化計算器
 });
 
@@ -1689,7 +2006,68 @@ function initBerries() {
         container.appendChild(card);
     });
 }
+// === 商店刷新函式 ===
+function shuffleArray(array) {
+    let arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
 
+function formatPrice(price) {
+    return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function refreshShop() {
+    const tbody = document.getElementById('shopBody');
+    tbody.innerHTML = '';
+    
+    let allItems = [];
+    
+    // 從每個類別抽取指定數量
+    for (const [cat, count] of Object.entries(shopConfig)) {
+        const catItems = shopDB.filter(item => item.cat === cat);
+        const shuffled = shuffleArray(catItems);
+        allItems = allItems.concat(shuffled.slice(0, count));
+    }
+    
+    // 隨機選擇打折商品
+    const shuffledAll = shuffleArray([...Array(allItems.length).keys()]);
+    const discountIndices = new Set(shuffledAll.slice(0, DISCOUNT_COUNT));
+    
+    // 渲染商品
+    allItems.forEach((item, index) => {
+        const isDiscounted = discountIndices.has(index);
+        const finalPrice = isDiscounted ? Math.floor(item.price * DISCOUNT_RATE) : item.price;
+        
+        let tagClass = '';
+        switch(item.cat) {
+            case '藥品': tagClass = 'tag-med'; break;
+            case '球類': tagClass = 'tag-ball'; break;
+            case '裝備': tagClass = 'tag-gear'; break;
+            case '生活': tagClass = 'tag-life'; break;
+            case '服飾': tagClass = 'tag-cloth'; break;
+        }
+        
+        let priceHTML = '';
+        if (isDiscounted) {
+            priceHTML = `<span class="original">$${formatPrice(item.price)}</span>$${formatPrice(finalPrice)}<span class="discount-badge">8折</span>`;
+        } else {
+            priceHTML = `$${formatPrice(finalPrice)}`;
+        }
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><span class="shop-tag ${tagClass}">${item.cat}</span></td>
+            <td><strong>${item.name}</strong></td>
+            <td class="shop-price ${isDiscounted ? 'discounted' : ''}">${priceHTML}</td>
+            <td class="shop-desc">${item.desc}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
 // --- 4. 收服計算器邏輯 (依據新JSON) ---
 function calcCatch() {
     // 取得條件
