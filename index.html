@@ -2045,38 +2045,7 @@ function refreshShop() {
         tbody.appendChild(row);
     });
 }
-    
-    // 渲染商品
-    allItems.forEach((item, index) => {
-        const isDiscounted = discountIndices.has(index);
-        const finalPrice = isDiscounted ? Math.floor(item.price * DISCOUNT_RATE) : item.price;
-        
-        let tagClass = '';
-        switch(item.cat) {
-            case '藥品': tagClass = 'tag-med'; break;
-            case '球類': tagClass = 'tag-ball'; break;
-            case '裝備': tagClass = 'tag-gear'; break;
-            case '生活': tagClass = 'tag-life'; break;
-            case '服飾': tagClass = 'tag-cloth'; break;
-        }
-        
-        let priceHTML = '';
-        if (isDiscounted) {
-            priceHTML = `<span class="original">$${formatPrice(item.price)}</span>$${formatPrice(finalPrice)}<span class="discount-badge">8折</span>`;
-        } else {
-            priceHTML = `$${formatPrice(finalPrice)}`;
-        }
-        
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td><span class="shop-tag ${tagClass}">${item.cat}</span></td>
-            <td><strong>${item.name}</strong></td>
-            <td class="shop-price ${isDiscounted ? 'discounted' : ''}">${priceHTML}</td>
-            <td class="shop-desc">${item.desc}</td>
-        `;
-        tbody.appendChild(row);
-    });
-}
+
 // --- 4. 收服計算器邏輯 (依據1條1球原則) ---
 function calcCatch() {
     // 取得條件
