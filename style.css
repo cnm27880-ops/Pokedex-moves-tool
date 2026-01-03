@@ -1,0 +1,439 @@
+      :root {
+            --primary-red: #DC0A2D;
+            --primary-dark: #2B292C;
+            --bg-color: #F5F5F5;
+            --sidebar-width: 260px;
+            --card-shadow: 0 4px 6px rgba(0,0,0,0.08);
+            --radius: 12px;
+            
+            /* 樹果階級顏色 */
+            --t1-bg: #ffebee; --t1-text: #c62828; --t1-border: #ffcdd2;
+            --t2-bg: #e8f5e9; --t2-text: #2e7d32; --t2-border: #c8e6c9;
+            --t3-bg: #e3f2fd; --t3-text: #1565c0; --t3-border: #bbdefb;
+            --t4-bg: #f3e5f5; --t4-text: #6a1b9a; --t4-border: #e1bee7;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+        }
+
+        body {
+    margin: 0;
+    background-color: var(--bg-color);
+    color: #333;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 電腦版：固定高度 */
+@media (min-width: 769px) {
+    body {
+        height: 100vh;
+        overflow: hidden;
+    }
+}
+
+        /* --- Header --- */
+        header {
+            background-color: var(--primary-red);
+            padding: 10px 20px;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 100;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .blue-lens {
+            width: 36px;
+            height: 36px;
+            background: radial-gradient(circle at 30% 30%, #4facfe, #00f2fe);
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0,242,254, 0.5);
+        }
+
+        h1 { margin: 0; font-size: 1.2rem; letter-spacing: 1px; }
+
+        /* --- Main Layout --- */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--primary-dark);
+            color: #eee;
+            overflow-y: auto;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .menu-group { border-bottom: 1px solid #444; }
+        
+        .menu-title {
+            padding: 15px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .menu-title:hover { background-color: #3e3b3e; }
+        .menu-title i { font-style: normal; font-size: 0.8em; transition: transform 0.3s; }
+        .menu-title.active i { transform: rotate(180deg); }
+
+        .submenu {
+            background-color: #1f1d1f;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .submenu-item {
+            display: block;
+            padding: 12px 20px 12px 40px;
+            color: #aaa;
+            text-decoration: none;
+            cursor: pointer;
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .submenu-item:hover { color: white; background-color: #333; }
+        .submenu-item.current {
+            color: white;
+            background-color: #333;
+            border-left-color: var(--primary-red);
+        }
+
+        /* --- Content Area --- */
+        .content-area {
+            flex: 1;
+            padding: 20px 30px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .view-section { display: none; max-width: 1200px; margin: 0 auto; }
+        .view-section.active { display: block; animation: fadeIn 0.3s; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Common Components --- */
+        .page-title {
+            font-size: 1.8rem;
+            color: var(--primary-dark);
+            margin-bottom: 20px;
+            border-left: 5px solid var(--primary-red);
+            padding-left: 15px;
+        }
+
+        /* --- 1. 招式查詢器 Styles --- */
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: var(--radius);
+            box-shadow: var(--card-shadow);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: flex-end;
+        }
+        .input-group { display: flex; flex-direction: column; gap: 5px; min-width: 150px; flex: 1; }
+        .search-group { flex: 2; min-width: 250px; }
+        .search-box { display: flex; gap: 5px; }
+        label { font-size: 0.9rem; font-weight: bold; color: #666; }
+        input, select {
+            padding: 10px; border: 2px solid #ddd; border-radius: 8px;
+            font-size: 1rem; width: 100%; outline: none; transition: 0.2s;
+        }
+        input:focus, select:focus { border-color: var(--primary-red); }
+        .btn-search {
+            background-color: var(--primary-dark); color: white; border: none;
+            padding: 0 20px; border-radius: 8px; cursor: pointer; height: 42px; font-weight: bold;
+        }
+        .btn-search:hover { background-color: #444; }
+        
+        .moves-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px;
+        }
+        .move-card {
+            background: white; border-radius: var(--radius); padding: 20px;
+            box-shadow: var(--card-shadow); border-left: 6px solid #ccc;
+            display: flex; flex-direction: column; gap: 10px; transition: transform 0.2s;
+        }
+        .move-card:hover { transform: translateY(-3px); }
+        .move-header { display: flex; justify-content: space-between; align-items: center; }
+        .move-name { font-size: 1.3rem; font-weight: 800; color: #333; }
+        .move-badge {
+            padding: 4px 12px; border-radius: 20px; color: white; font-size: 0.85rem; font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3); background-color: #777;
+        }
+        .move-stats {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+            background: #f9f9f9; padding: 10px; border-radius: 8px; font-size: 0.9rem; color: #555;
+        }
+        .effect-text { font-size: 0.95rem; line-height: 1.6; color: #444; border-top: 1px solid #eee; padding-top: 10px; }
+        
+        /* === 屬性顏色 (完整版) === */
+        /* 徽章背景色 */
+        .type-一般 { background-color: #D3D3D3; color: #333; }
+        .type-火 { background-color: #930000; }
+        .type-水 { background-color: #2A7FEF; }
+        .type-草 { background-color: #2A7F06; }
+        .type-冰 { background-color: #3DD8FF; color: #333; }
+        .type-妖精 { background-color: #FAC2FF; color: #333; }
+        .type-電 { background-color: #FAC000; color: #333; }
+        .type-地面 { background-color: #915221; }
+        .type-格鬥 { background-color: #FF8138; }
+        .type-毒 { background-color: #9343CB; }
+        .type-飛行 { background-color: #78B4ED; color: #333; }
+        .type-超能者 { background-color: #EF437A; }
+        .type-蟲 { background-color: #8FA419; }
+        .type-岩石 { background-color: #AFA683; color: #333; }
+        .type-幽靈 { background-color: #512F4F; }
+        .type-龍 { background-color: #6670CC; }
+        .type-惡 { background-color: #50413F; }
+        .type-鋼 { background-color: #61A5B8; }
+        .type-變量, .type-變量屬性 { background-color: #777; }
+
+        /* 卡片邊框色 */
+        .card-type-一般 { border-color: #D3D3D3; }
+        .card-type-火 { border-color: #930000; }
+        .card-type-水 { border-color: #2A7FEF; }
+        .card-type-草 { border-color: #2A7F06; }
+        .card-type-冰 { border-color: #3DD8FF; }
+        .card-type-妖精 { border-color: #FAC2FF; }
+        .card-type-電 { border-color: #FAC000; }
+        .card-type-地面 { border-color: #915221; }
+        .card-type-格鬥 { border-color: #FF8138; }
+        .card-type-毒 { border-color: #9343CB; }
+        .card-type-飛行 { border-color: #78B4ED; }
+        .card-type-超能者 { border-color: #EF437A; }
+        .card-type-蟲 { border-color: #8FA419; }
+        .card-type-岩石 { border-color: #AFA683; }
+        .card-type-幽靈 { border-color: #512F4F; }
+        .card-type-龍 { border-color: #6670CC; }
+        .card-type-惡 { border-color: #50413F; }
+        .card-type-鋼 { border-color: #61A5B8; }
+        .card-type-變量, .card-type-變量屬性 { border-color: #777; }
+
+        /* --- 2. 修整日活動 Styles --- */
+        .rules-container { display: grid; gap: 20px; }
+        .rule-card {
+            background: white; border-radius: var(--radius); padding: 25px;
+            box-shadow: var(--card-shadow); border: 1px solid #eee;
+        }
+        .rule-title { 
+            font-size: 1.4rem; 
+            font-weight: bold;
+            color: var(--primary-red); 
+            margin-bottom: 15px; 
+            border-bottom: 2px solid #eee; 
+            padding-bottom: 10px; 
+        }
+        .rule-content ul { padding-left: 20px; line-height: 1.8; color: #444; }
+        .rule-content li { margin-bottom: 8px; }
+        .rule-highlight { background-color: #fff3e0; padding: 2px 6px; border-radius: 4px; color: #e65100; font-weight: bold; }
+
+        /* --- 3. 樹果圖鑑 Styles --- */
+        .berry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .berry-card {
+            background: #F6F2F0; 
+            border-radius: var(--radius); 
+            padding: 20px;
+            box-shadow: var(--card-shadow); 
+            border: 1px solid #e0dbd8;
+            position: relative; 
+            overflow: hidden;
+        }
+        .berry-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .berry-name { font-size: 1.3rem; font-weight: bold; }
+        .berry-tier {
+            padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold;
+            border: 1px solid;
+        }
+        .tier-T1 { background-color: var(--t1-bg); color: var(--t1-text); border-color: var(--t1-border); }
+        .tier-T2 { background-color: var(--t2-bg); color: var(--t2-text); border-color: var(--t2-border); }
+        .tier-T3 { background-color: var(--t3-bg); color: var(--t3-text); border-color: var(--t3-border); }
+        .tier-T4 { background-color: var(--t4-bg); color: var(--t4-text); border-color: var(--t4-border); }
+
+        .berry-info { font-size: 0.95rem; line-height: 1.5; color: #555; }
+        .berry-row { margin-bottom: 8px; display: flex; }
+        .berry-label { font-weight: bold; color: #888; width: 50px; flex-shrink: 0; }
+
+        /* --- 4. 收服計算器 Styles --- */
+        .calc-container {
+            background: white; padding: 30px; border-radius: var(--radius);
+            box-shadow: var(--card-shadow); max-width: 900px; margin: 0 auto;
+        }
+        .calc-section { margin-bottom: 25px; padding: 20px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; }
+        .calc-section-title { font-size: 1.1rem; font-weight: bold; color: var(--primary-dark); margin-bottom: 15px; }
+        .calc-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+        .calc-check-label {
+            display: flex; align-items: center; padding: 10px; background: white;
+            border: 1px solid #ddd; border-radius: 6px; cursor: pointer; transition: 0.2s;
+        }
+        .calc-check-label:hover { border-color: var(--primary-red); }
+        .calc-check-label input { width: auto; margin-right: 10px; }
+        .cost-badge { margin-left: auto; background: #eee; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; color: #666; }
+
+        .calc-custom-section { margin-top: 15px; padding: 15px; background: #fff; border-radius: 6px; border: 1px dashed #ccc; }
+        .custom-attr-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        .custom-attr-item { 
+            display: flex; align-items: center; gap: 5px;
+            padding: 6px 12px; background: #f0f0f0; border-radius: 4px; font-size: 0.9rem;
+        }
+        .custom-attr-item input { width: auto; }
+
+        .ball-section { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+        .ball-input-group { 
+            display: flex; flex-direction: column; gap: 5px;
+            padding: 15px; background: white; border-radius: 8px; border: 1px solid #ddd;
+        }
+        .ball-input-group label { font-weight: bold; color: #333; font-size: 0.95rem; }
+        .ball-input-group input { text-align: center; }
+        .ball-desc { font-size: 0.75rem; color: #888; margin-top: 5px; }
+        
+        .result-box {
+            background-color: var(--primary-dark); color: white; padding: 25px;
+            border-radius: var(--radius); margin-top: 30px;
+        }
+        .result-section { margin-bottom: 15px; }
+        .result-section-title { font-size: 0.9rem; color: #aaa; margin-bottom: 8px; }
+        .result-detail { font-size: 0.95rem; line-height: 1.8; }
+        .result-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .result-total { font-size: 1.5rem; font-weight: bold; color: #4facfe; border-top: 1px solid #555; padding-top: 15px; margin-top: 15px; }
+        .result-summary { margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px; }
+        .result-summary-title { font-weight: bold; margin-bottom: 10px; color: #69f0ae; }
+
+        /* 手機版：整頁可滾動 */
+@media (max-width: 768px) {
+    body {
+        height: auto;
+        overflow: visible;
+    }
+    .main-container { 
+        flex-direction: column; 
+        overflow: visible;
+    }
+    .sidebar { 
+        width: 100%; 
+        height: auto; 
+        max-height: none;
+        overflow: visible;
+    }
+    .content-area { 
+        overflow: visible;
+        padding-bottom: 80px;
+    }
+}
+/* === 商店頁面樣式 === */
+.shop-controls {
+    text-align: center;
+    margin-bottom: 25px;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: var(--radius);
+}
+.shop-controls p {
+    color: white;
+    margin: 0 0 15px 0;
+    font-size: 0.95rem;
+}
+.btn-refresh {
+    background-color: #fff;
+    color: #764ba2;
+    border: none;
+    padding: 12px 30px;
+    font-size: 16px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    transition: all 0.3s;
+}
+.btn-refresh:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+.btn-refresh:active {
+    transform: translateY(0);
+}
+
+.shop-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+}
+.shop-table th {
+    background-color: var(--primary-dark);
+    color: white;
+    padding: 15px;
+    text-align: left;
+    font-weight: bold;
+}
+.shop-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    vertical-align: top;
+}
+.shop-table tr:hover {
+    background-color: #f8f9fa;
+}
+.shop-price {
+    color: #d35400;
+    font-weight: bold;
+    white-space: nowrap;
+}
+.shop-price.discounted {
+    color: #e74c3c;
+}
+.shop-price .original {
+    text-decoration: line-through;
+    color: #999;
+    font-size: 0.85em;
+    margin-right: 5px;
+}
+.shop-desc {
+    color: #555;
+    font-size: 0.9em;
+    line-height: 1.5;
+}
+.shop-tag {
+    display: inline-block;
+    font-size: 0.8em;
+    padding: 4px 10px;
+    border-radius: 20px;
+    color: white;
+    font-weight: bold;
+}
+.tag-med { background-color: #e74c3c; }
+.tag-ball { background-color: #3498db; }
+.tag-gear { background-color: #9b59b6; }
+.tag-life { background-color: #f39c12; color: #333; }
+.tag-cloth { background-color: #1abc9c; }
+.discount-badge {
+    display: inline-block;
+    background: #e74c3c;
+    color: white;
+    font-size: 0.75em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 8px;
+}
